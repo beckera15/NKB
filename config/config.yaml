@@ -1,0 +1,74 @@
+# MRS1000 LIDAR Visualization Configuration
+# For Red Lion Flex Edge
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  http_port: 8080
+  ws_port: 8080  # WebSocket on same port as HTTP
+
+# Sensor settings
+sensor:
+  # UDP port to receive LIDAR data
+  udp_port: 2112
+  # Optional: Filter packets by sensor IP (leave empty for any)
+  sensor_ip: ""
+  # Connection timeout in seconds
+  timeout: 5.0
+
+# Mode settings
+mode:
+  # Set to true for simulation mode (no real sensor required)
+  simulation: false
+  # Simulation scan rate in Hz (12.5, 25, or 50)
+  simulation_rate: 12.5
+
+# Data settings
+data:
+  # Use compact data format for efficient transmission
+  compact_mode: true
+  # Maximum number of WebSocket clients
+  max_clients: 10
+  # Buffer size for UDP packets
+  buffer_size: 65535
+
+# Visualization defaults
+visualization:
+  # Maximum display range in meters
+  max_range: 64
+  # Default point size in pixels
+  point_size: 2
+  # Show grid lines
+  show_grid: true
+  # Show range rings
+  show_range_rings: true
+  # Grid spacing in meters
+  grid_spacing: 5
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# MRS1000 Sensor Configuration
+# These settings are for reference when configuring the actual sensor
+mrs1000:
+  # Scan frequency options: 12.5, 25, 50 Hz
+  scan_frequency: 12.5
+  # Angular resolution: 0.25° (fixed)
+  angular_resolution: 0.25
+  # Field of view: 275° horizontal, 5° vertical
+  fov_horizontal: 275
+  fov_vertical: 5
+  # Number of layers: 4
+  layers: 4
+  # Layer vertical angles
+  layer_angles:
+    - -2.5
+    - -0.833
+    - 0.833
+    - 2.5
+  # Maximum range: 64m
+  max_range: 64
+  # Default output port for scan data
+  output_port: 2112

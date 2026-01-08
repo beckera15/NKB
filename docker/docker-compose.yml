@@ -1,0 +1,88 @@
+# MRS1000 LIDAR Visualization - Docker Compose
+# For Red Lion Flex Edge Deployment
+
+version: '3.8'
+
+services:
+  lidar-visualization:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mrs1000-lidar-viz
+    restart: unless-stopped
+
+    ports:
+      # Web interface and WebSocket
+      - "8080:8080"
+      # UDP port for LIDAR data (if receiving directly)
+      - "2112:2112/udp"
+
+    environment:
+      # Application configuration
+      - LIDAR_HOST=0.0.0.0
+      - LIDAR_HTTP_PORT=8080
+      - LIDAR_UDP_PORT=2112
+      # Set to 'true' for simulation mode (no real sensor)
+      - LIDAR_SIMULATION=false
+      # Optional: Filter by sensor IP
+      # - LIDAR_SENSOR_IP=192.168.1.100
+
+    # Network mode for direct sensor access (alternative to port mapping)
+    # network_mode: host
+
+    # Resource limits for Flex Edge
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/status')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Simulation service for testing
+  lidar-simulation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mrs1000-lidar-sim
+    profiles:
+      - simulation
+    restart: unless-stopped
+
+    ports:
+      - "8081:8080"
+
+    environment:
+      - LIDAR_HOST=0.0.0.0
+      - LIDAR_HTTP_PORT=8080
+      - LIDAR_SIMULATION=true
+      - LIDAR_SIM_RATE=12.5
+
+    command: ["python", "backend/app.py", "--host", "0.0.0.0", "--port", "8080", "--simulate"]
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"

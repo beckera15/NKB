@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICK MRS1000 LIDAR Visualization - Red Lion Flex Edge</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>MRS1000 LIDAR Viewer</h1>
+                <span class="connection-status" id="connectionStatus">
+                    <span class="status-dot disconnected"></span>
+                    <span class="status-text">Disconnected</span>
+                </span>
+            </div>
+            <div class="header-right">
+                <div class="mode-badge" id="modeBadge">LIVE</div>
+                <button class="btn btn-settings" id="settingsBtn" title="Settings">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97 0-.33-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1 0 .33.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel - Stats and Controls -->
+            <aside class="side-panel left-panel">
+                <section class="panel-section">
+                    <h2>Scan Info</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Scan Rate</span>
+                            <span class="stat-value" id="scanRate">-- Hz</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Points</span>
+                            <span class="stat-value" id="pointCount">--</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Scan #</span>
+                            <span class="stat-value" id="scanNumber">--</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Latency</span>
+                            <span class="stat-value" id="latency">-- ms</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h2>View Controls</h2>
+                    <div class="control-group">
+                        <label>View Mode</label>
+                        <div class="btn-group">
+                            <button class="btn btn-sm active" data-view="2d">2D Top</button>
+                            <button class="btn btn-sm" data-view="3d">3D</button>
+                            <button class="btn btn-sm" data-view="layers">Layers</button>
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label>Max Range: <span id="rangeValue">64</span>m</label>
+                        <input type="range" id="rangeSlider" min="1" max="64" value="64" class="slider">
+                    </div>
+                    <div class="control-group">
+                        <label>Point Size: <span id="pointSizeValue">2</span>px</label>
+                        <input type="range" id="pointSizeSlider" min="1" max="10" value="2" class="slider">
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Layer Visibility</h2>
+                    <div class="layer-controls">
+                        <label class="checkbox-label">
+                            <input type="checkbox" checked data-layer="0">
+                            <span class="layer-color" style="background: #ff4444;"></span>
+                            Layer 1 (-2.5°)
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" checked data-layer="1">
+                            <span class="layer-color" style="background: #44ff44;"></span>
+                            Layer 2 (-0.83°)
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" checked data-layer="2">
+                            <span class="layer-color" style="background: #4444ff;"></span>
+                            Layer 3 (+0.83°)
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" checked data-layer="3">
+                            <span class="layer-color" style="background: #ffff44;"></span>
+                            Layer 4 (+2.5°)
+                        </label>
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Color Mode</h2>
+                    <div class="control-group">
+                        <select id="colorMode" class="select-input">
+                            <option value="layer">By Layer</option>
+                            <option value="distance">By Distance</option>
+                            <option value="intensity">By Intensity (RSSI)</option>
+                            <option value="height">By Height</option>
+                        </select>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Visualization Canvas -->
+            <div class="visualization-container">
+                <canvas id="lidarCanvas"></canvas>
+                <div class="canvas-overlay">
+                    <div class="zoom-controls">
+                        <button class="btn btn-icon" id="zoomIn" title="Zoom In">+</button>
+                        <button class="btn btn-icon" id="zoomOut" title="Zoom Out">-</button>
+                        <button class="btn btn-icon" id="resetView" title="Reset View">⟲</button>
+                    </div>
+                    <div class="coordinate-display" id="coordDisplay">
+                        X: --, Y: --, D: --
+                    </div>
+                </div>
+                <!-- 3D Canvas (hidden by default) -->
+                <canvas id="lidar3DCanvas" style="display: none;"></canvas>
+            </div>
+
+            <!-- Right Panel - Distance Histogram and More -->
+            <aside class="side-panel right-panel">
+                <section class="panel-section">
+                    <h2>Distance Histogram</h2>
+                    <canvas id="histogramCanvas" class="histogram-canvas"></canvas>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Statistics</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Min Distance</span>
+                            <span class="stat-value" id="minDistance">-- m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Max Distance</span>
+                            <span class="stat-value" id="maxDistance">-- m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Avg Distance</span>
+                            <span class="stat-value" id="avgDistance">-- m</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Valid Points</span>
+                            <span class="stat-value" id="validPoints">--%</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel-section">
+                    <h2>Connection</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Messages</span>
+                            <span class="stat-value" id="msgCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Data Rate</span>
+                            <span class="stat-value" id="dataRate">-- KB/s</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-full" id="reconnectBtn">Reconnect</button>
+                </section>
+            </aside>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <span>SICK MRS1000 LIDAR Visualization</span>
+            <span class="separator">|</span>
+            <span>Red Lion Flex Edge</span>
+            <span class="separator">|</span>
+            <span id="timestamp">--:--:--</span>
+        </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="btn btn-icon modal-close" id="closeSettings">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>WebSocket URL</label>
+                    <input type="text" id="wsUrl" class="text-input" placeholder="ws://localhost:8080/ws">
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="autoReconnect" checked>
+                        Auto Reconnect
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="showGrid" checked>
+                        Show Grid
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="showRangeRings" checked>
+                        Show Range Rings
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>Grid Spacing: <span id="gridSpacingValue">5</span>m</label>
+                    <input type="range" id="gridSpacing" min="1" max="20" value="5" class="slider">
+                </div>
+                <div class="form-group">
+                    <label>Background</label>
+                    <select id="bgColor" class="select-input">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="black">Pure Black</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" id="saveSettings">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/lidar-viewer.js"></script>
+    <script src="js/visualization-2d.js"></script>
+    <script src="js/visualization-3d.js"></script>
+    <script src="js/histogram.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
