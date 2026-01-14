@@ -2,13 +2,8 @@
 # For Red Lion Flex Edge Deployment
 
 # Web server and WebSocket support
-aiohttp>=3.9.0
-
-# Async I/O utilities (included with Python 3.11+, but explicit for compatibility)
-asyncio-extras>=1.3.0; python_version < "3.11"
-
-# Optional: For enhanced async support
-uvloop>=0.19.0; sys_platform != "win32"
+# Minimum 3.10.11 required for CVE-2024-23334, CVE-2024-27306, CVE-2024-52304 fixes
+aiohttp>=3.10.11
 
 # Development/testing dependencies (optional)
 # pytest>=7.4.0
