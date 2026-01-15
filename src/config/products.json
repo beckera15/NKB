@@ -1,0 +1,97 @@
+{
+  "active_product_id": 1,
+  "products": [
+    {
+      "id": 1,
+      "name": "Example Product",
+      "description": "Example product with 3 measurement zones",
+      "enabled": true,
+      "zones": [
+        {
+          "id": 1,
+          "name": "Front Center",
+          "enabled": true,
+          "start_angle": -15.0,
+          "end_angle": 15.0,
+          "layers": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "expected_distance": 2.0,
+          "tolerance_plus": 0.1,
+          "tolerance_minus": 0.1,
+          "min_valid_distance": 0.1,
+          "max_valid_distance": 10.0,
+          "min_points": 5,
+          "use_median": true,
+          "outlier_rejection": true,
+          "outlier_std_factor": 2.0,
+          "last_measurement": 0.0,
+          "last_result": 0,
+          "last_result_name": "UNKNOWN",
+          "last_update_time": 0.0,
+          "point_count": 0
+        },
+        {
+          "id": 2,
+          "name": "Left Side",
+          "enabled": true,
+          "start_angle": -60.0,
+          "end_angle": -30.0,
+          "layers": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "expected_distance": 3.0,
+          "tolerance_plus": 0.15,
+          "tolerance_minus": 0.15,
+          "min_valid_distance": 0.1,
+          "max_valid_distance": 10.0,
+          "min_points": 5,
+          "use_median": true,
+          "outlier_rejection": true,
+          "outlier_std_factor": 2.0,
+          "last_measurement": 0.0,
+          "last_result": 0,
+          "last_result_name": "UNKNOWN",
+          "last_update_time": 0.0,
+          "point_count": 0
+        },
+        {
+          "id": 3,
+          "name": "Right Side",
+          "enabled": true,
+          "start_angle": 30.0,
+          "end_angle": 60.0,
+          "layers": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "expected_distance": 3.0,
+          "tolerance_plus": 0.15,
+          "tolerance_minus": 0.15,
+          "min_valid_distance": 0.1,
+          "max_valid_distance": 10.0,
+          "min_points": 5,
+          "use_median": true,
+          "outlier_rejection": true,
+          "outlier_std_factor": 2.0,
+          "last_measurement": 0.0,
+          "last_result": 0,
+          "last_result_name": "UNKNOWN",
+          "last_update_time": 0.0,
+          "point_count": 0
+        }
+      ],
+      "last_result": 0,
+      "last_result_name": "UNKNOWN",
+      "last_update_time": 0.0
+    }
+  ]
+}

@@ -363,8 +363,10 @@ class LidarVisualizationApp:
 
         # Static files (frontend)
         if self.static_path.exists():
-            app.router.add_static('/', self.static_path, name='static')
+            # Add index route first, then static files
             app.router.add_get('/', self._handle_index)
+            app.router.add_static('/css', self.static_path / 'css', name='css')
+            app.router.add_static('/js', self.static_path / 'js', name='js')
             logger.info(f"Serving static files from: {self.static_path}")
         else:
             logger.warning("No static files directory found")
