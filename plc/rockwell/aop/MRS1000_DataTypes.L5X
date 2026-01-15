@@ -1,0 +1,322 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+    MRS1000 LIDAR Data Types for Rockwell Studio 5000
+
+    Import this file to create the required User-Defined Types (UDTs)
+    for communicating with the MRS1000 LIDAR sensor.
+
+    In Studio 5000:
+    1. Right-click on "User-Defined" under Data Types
+    2. Select "Import Data Type..."
+    3. Select this file
+-->
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="32.00" TargetName="MRS1000_DataTypes" TargetType="DataType" ContainsContext="false" Owner="Custom Integration" ExportDate="Wed Jan 15 12:00:00 2025" ExportOptions="DecoratedData ForceProtectedEncoding AllProjDocTrans">
+    <Controller Use="Context" Name="MRS1000_DataTypes">
+        <DataTypes Use="Context">
+            <!-- Zone Measurement Data -->
+            <DataType Name="MRS1000_Zone" Family="NoFamily" Class="User">
+                <Description>
+                    <![CDATA[Single measurement zone data from MRS1000 LIDAR]]>
+                </Description>
+                <Members>
+                    <Member Name="Measurement" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Current measurement value in millimeters]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Result" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone result: 0=Unknown, 1=Good, 2=Bad, 3=NoTarget, 4=Error]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsGood" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when Result = 1 (Good)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsBad" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when Result = 2 (Bad)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ExpectedDistance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Expected distance for this zone in mm (configuration)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Tolerance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Tolerance +/- in mm (configuration)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Deviation" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Deviation from expected (Measurement - ExpectedDistance)]]>
+                        </Description>
+                    </Member>
+                </Members>
+            </DataType>
+
+            <!-- Statistics Data -->
+            <DataType Name="MRS1000_Stats" Family="NoFamily" Class="User">
+                <Description>
+                    <![CDATA[Measurement statistics from MRS1000 LIDAR]]>
+                </Description>
+                <Members>
+                    <Member Name="ScanCounter" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Total number of scans processed]]>
+                        </Description>
+                    </Member>
+                    <Member Name="GoodCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Number of good measurements]]>
+                        </Description>
+                    </Member>
+                    <Member Name="BadCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Number of bad measurements]]>
+                        </Description>
+                    </Member>
+                    <Member Name="GoodRate" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Good rate x100 (e.g., 9850 = 98.50%)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="GoodRateReal" DataType="REAL" Dimension="0" Radix="Float" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Good rate as percentage (0.0 to 100.0)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="TotalParts" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Total parts inspected (GoodCount + BadCount)]]>
+                        </Description>
+                    </Member>
+                </Members>
+            </DataType>
+
+            <!-- Input Assembly Data (LIDAR -> PLC) -->
+            <DataType Name="MRS1000_Input" Family="NoFamily" Class="User">
+                <Description>
+                    <![CDATA[Input data from MRS1000 LIDAR (64 bytes) - Maps to Assembly Instance 100]]>
+                </Description>
+                <Members>
+                    <Member Name="Status" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Sensor status: 0=Offline, 1=Running, 2=Error, 3=Simulation]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ActiveProductID" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Currently active product configuration ID]]>
+                        </Description>
+                    </Member>
+                    <Member Name="OverallResult" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Overall result: 0=Unknown, 1=Good, 2=Bad, 3=NoTarget, 4=Error]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ZoneCount" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Number of measurement zones configured]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ScanCounter" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Scan counter]]>
+                        </Description>
+                    </Member>
+                    <Member Name="GoodCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Good measurement count]]>
+                        </Description>
+                    </Member>
+                    <Member Name="BadCount" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Bad measurement count]]>
+                        </Description>
+                    </Member>
+                    <Member Name="GoodRate" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Good rate x100]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone1_Measurement" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 1 measurement (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone1_Result" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 1 result]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone2_Measurement" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 2 measurement (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone2_Result" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 2 result]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone3_Measurement" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 3 measurement (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone3_Result" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 3 result]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone4_Measurement" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 4 measurement (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone4_Result" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 4 result]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Timestamp" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Timestamp in ms]]>
+                        </Description>
+                    </Member>
+                    <Member Name="MinDistance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Minimum distance in scan (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="MaxDistance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Maximum distance in scan (mm)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsGood" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when OverallResult = 1]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsBad" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when OverallResult = 2]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsOnline" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when Status = 1 or 3]]>
+                        </Description>
+                    </Member>
+                    <Member Name="IsError" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[True when Status = 2]]>
+                        </Description>
+                    </Member>
+                </Members>
+            </DataType>
+
+            <!-- Output Assembly Data (PLC -> LIDAR) -->
+            <DataType Name="MRS1000_Output" Family="NoFamily" Class="User">
+                <Description>
+                    <![CDATA[Output data to MRS1000 LIDAR (32 bytes) - Maps to Assembly Instance 101]]>
+                </Description>
+                <Members>
+                    <Member Name="Command" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Command: 0=None, 1=ResetStats, 2=ChangeProduct]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ProductID" DataType="SINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Product ID to activate (with Command=2)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Reserved1" DataType="INT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Reserved]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone1_ExpectedDist" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 1 expected distance in mm]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone1_Tolerance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 1 tolerance +/- in mm]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone2_ExpectedDist" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 2 expected distance in mm]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone2_Tolerance" DataType="DINT" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Zone 2 tolerance +/- in mm]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Reserved2" DataType="SINT" Dimension="12" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Reserved for future expansion]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ResetStats" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Set to TRUE to reset statistics (auto-clears)]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ChangeProduct" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Set to TRUE to change product (auto-clears)]]>
+                        </Description>
+                    </Member>
+                </Members>
+            </DataType>
+
+            <!-- Complete Device Data Structure -->
+            <DataType Name="MRS1000_Device" Family="NoFamily" Class="User">
+                <Description>
+                    <![CDATA[Complete MRS1000 LIDAR device data structure]]>
+                </Description>
+                <Members>
+                    <Member Name="Input" DataType="MRS1000_Input" Dimension="0" Radix="NullType" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Input data from sensor]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Output" DataType="MRS1000_Output" Dimension="0" Radix="NullType" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Output data to sensor]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Zone" DataType="MRS1000_Zone" Dimension="4" Radix="NullType" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Processed zone data with computed fields]]>
+                        </Description>
+                    </Member>
+                    <Member Name="Stats" DataType="MRS1000_Stats" Dimension="0" Radix="NullType" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Processed statistics with computed fields]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ConnectionFault" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[EtherNet/IP connection fault]]>
+                        </Description>
+                    </Member>
+                    <Member Name="ConnectionRun" DataType="BOOL" Dimension="0" Radix="Decimal" Hidden="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[EtherNet/IP connection running]]>
+                        </Description>
+                    </Member>
+                </Members>
+            </DataType>
+        </DataTypes>
+    </Controller>
+</RSLogix5000Content>

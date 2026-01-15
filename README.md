@@ -23,6 +23,8 @@ A real-time 3D LIDAR visualization application designed for the SICK MRS1000 mul
 ### Industrial Integration
 - **OPC-UA server** for Ignition SCADA integration
 - **Modbus TCP server** for Rockwell PLC communication
+- **EtherNet/IP server** for native Rockwell PLC integration
+- **Add-On Profile (AOP)** for Studio 5000 device integration
 - **Rockwell AOI** (Add-On Instruction) for Studio 5000
 - **REST API** for configuration and monitoring
 
@@ -59,7 +61,8 @@ The SICK MRS1000 is a 3D multi-layer LIDAR scanner with:
 │   │   ├── udp_receiver.py         # UDP receiver for sensor data
 │   │   ├── measurement_evaluator.py # Product measurement evaluation
 │   │   ├── opcua_server.py         # OPC-UA server for Ignition
-│   │   └── modbus_server.py        # Modbus TCP server for PLCs
+│   │   ├── modbus_server.py        # Modbus TCP server for PLCs
+│   │   └── ethernetip_server.py    # EtherNet/IP server for Rockwell
 │   └── frontend/
 │       ├── index.html              # Main HTML page
 │       ├── css/
@@ -78,6 +81,13 @@ The SICK MRS1000 is a 3D multi-layer LIDAR scanner with:
 │   └── docker-compose.yml          # Docker Compose configuration
 ├── plc/
 │   └── rockwell/
+│       ├── eds/
+│       │   └── MRS1000_LIDAR.eds   # EDS file for device recognition
+│       ├── aop/
+│       │   ├── MRS1000_LIDAR_AOP.xml    # Add-On Profile definition
+│       │   ├── MRS1000_DataTypes.L5X    # Data types for Studio 5000
+│       │   ├── MRS1000_SampleProgram.L5X # Sample ladder logic
+│       │   └── README_EtherNetIP.md     # EtherNet/IP guide
 │       ├── MRS1000_LIDAR_AOI.L5X   # Rockwell AOI for Studio 5000
 │       └── README_Rockwell.md      # Rockwell integration guide
 ├── scripts/
@@ -206,6 +216,43 @@ The application includes a Modbus TCP server for Rockwell PLC integration.
 2. Configure MSG instructions to read Modbus registers
 3. See `plc/rockwell/README_Rockwell.md` for detailed instructions
 
+### Rockwell PLC (EtherNet/IP - Native)
+
+For native Rockwell integration without Modbus, use the EtherNet/IP server.
+
+**EtherNet/IP Server:** TCP 44818, UDP 2222
+
+**Assembly Instances:**
+
+| Instance | Type | Size | Description |
+|----------|------|------|-------------|
+| 100 | Input | 64 bytes | LIDAR → PLC (status, results, measurements) |
+| 101 | Output | 32 bytes | PLC → LIDAR (commands, configuration) |
+| 102 | Config | 16 bytes | Configuration data |
+
+**Input Data (Instance 100):**
+
+| Offset | Type | Description |
+|--------|------|-------------|
+| 0 | SINT | Status (0=Offline, 1=Running, 2=Error, 3=Sim) |
+| 1 | SINT | Active Product ID |
+| 2 | SINT | Overall Result (1=GOOD, 2=BAD) |
+| 3 | SINT | Zone Count |
+| 4-7 | DINT | Scan Counter |
+| 8-11 | DINT | Good Count |
+| 12-15 | DINT | Bad Count |
+| 16-19 | DINT | Good Rate × 100 |
+| 20-51 | DINT[] | Zone 1-4 Measurements & Results |
+| 52-63 | DINT[] | Timestamp, Min/Max Distance |
+
+**Rockwell Studio 5000 EtherNet/IP Setup:**
+
+1. Install EDS file from `plc/rockwell/eds/MRS1000_LIDAR.eds`
+2. Import data types from `plc/rockwell/aop/MRS1000_DataTypes.L5X`
+3. Add Generic Ethernet Module with IP address and assembly instances
+4. Import sample program from `plc/rockwell/aop/MRS1000_SampleProgram.L5X`
+5. See `plc/rockwell/aop/README_EtherNetIP.md` for detailed instructions
+
 ## Configuration
 
 ### Command-Line Arguments
@@ -222,6 +269,9 @@ The application includes a Modbus TCP server for Rockwell PLC integration.
 | `--opcua-port` | `4840` | OPC-UA server port |
 | `--no-modbus` | `false` | Disable Modbus server |
 | `--modbus-port` | `502` | Modbus TCP port |
+| `--no-ethernetip` | `false` | Disable EtherNet/IP server |
+| `--eip-tcp-port` | `44818` | EtherNet/IP TCP port |
+| `--eip-udp-port` | `2222` | EtherNet/IP UDP port |
 | `--config` | `../config/products.json` | Product config file |
 
 ### Example Configurations
@@ -231,10 +281,13 @@ The application includes a Modbus TCP server for Rockwell PLC integration.
 python src/backend/app.py --simulate
 
 # Visualization only (no PLC integration)
+python src/backend/app.py --simulate --no-opcua --no-modbus --no-ethernetip
+
+# Rockwell only (EtherNet/IP native)
 python src/backend/app.py --simulate --no-opcua --no-modbus
 
 # Custom ports
-python src/backend/app.py --port 8000 --opcua-port 4841 --modbus-port 5020
+python src/backend/app.py --port 8000 --opcua-port 4841 --modbus-port 5020 --eip-tcp-port 44819
 ```
 
 ## Docker Deployment
@@ -246,11 +299,11 @@ python src/backend/app.py --port 8000 --opcua-port 4841 --modbus-port 5020
 docker build -f docker/Dockerfile -t mrs1000-lidar-viz .
 
 # Run in simulation mode
-docker run -p 8080:8080 -p 4840:4840 -p 502:502 \
+docker run -p 8080:8080 -p 4840:4840 -p 502:502 -p 44818:44818 -p 2222:2222/udp \
   mrs1000-lidar-viz python backend/app.py --simulate
 
 # Run with real sensor
-docker run -p 8080:8080 -p 2112:2112/udp -p 4840:4840 -p 502:502 \
+docker run -p 8080:8080 -p 2112:2112/udp -p 4840:4840 -p 502:502 -p 44818:44818 -p 2222:2222/udp \
   mrs1000-lidar-viz
 ```
 

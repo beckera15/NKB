@@ -1,0 +1,218 @@
+$ EDS File for SICK MRS1000 LIDAR Sensor
+$ For use with Rockwell Automation Studio 5000
+$
+$ This file describes the EtherNet/IP interface for the
+$ MRS1000 3D LIDAR sensor running on Red Lion Flex Edge
+$
+$ Copyright 2024 - Industrial Automation Solutions
+
+[File]
+    DescText = "SICK MRS1000 LIDAR Sensor - EtherNet/IP Adapter";
+    CreateDate = 01-15-2024;
+    CreateTime = 12:00:00;
+    ModDate = 01-15-2024;
+    ModTime = 12:00:00;
+    Revision = 1.1;
+    HomeURL = "";
+
+[Device]
+    VendCode = 65535;
+    VendName = "Custom Integration";
+    ProdType = 43;
+    ProdTypeStr = "Generic Device";
+    ProdCode = 1000;
+    MajRev = 1;
+    MinRev = 0;
+    ProdName = "MRS1000 LIDAR Sensor";
+    Catalog = "MRS1000-EIPGW";
+    Icon = "mrs1000.ico";
+
+[Device Classification]
+    Class1 = EtherNetIP;
+
+[Port]
+    Port1 = TCP, "EtherNet/IP Port", "20-01", 44818;
+    Port2 = UDP, "Implicit I/O Port", "20-02", 2222;
+
+[Params]
+    $ Input Assembly Parameters
+    Param1 =
+        0,                      $ first field shall equal 0
+        ,,                      $ path size, path
+        0x0000,                 $ descriptor
+        0xC7,                   $ data type: DINT array
+        1,                      $ data size in bytes
+        "Status",               $ name
+        "",                     $ units
+        "",                     $ help string
+        0,1,0,                  $ min, max, default
+        ,,,,                    $ mult, div, base, offset
+        ,,,,                    $ mult, div, base, offset
+        0,                      $ link path size
+        ;                       $ link path
+
+    Param2 =
+        0,
+        ,,
+        0x0000,
+        0xC7,
+        1,
+        "Active Product ID",
+        "",
+        "Currently active product configuration",
+        0,255,1,
+        ,,,,
+        ,,,,
+        0,
+        ;
+
+    Param3 =
+        0,
+        ,,
+        0x0000,
+        0xC7,
+        1,
+        "Overall Result",
+        "",
+        "0=Unknown, 1=Good, 2=Bad, 3=NoTarget, 4=Error",
+        0,4,0,
+        ,,,,
+        ,,,,
+        0,
+        ;
+
+    Param4 =
+        0,
+        ,,
+        0x0000,
+        0xC7,
+        4,
+        "Scan Counter",
+        "scans",
+        "Total number of scans processed",
+        0,4294967295,0,
+        ,,,,
+        ,,,,
+        0,
+        ;
+
+    Param5 =
+        0,
+        ,,
+        0x0000,
+        0xC7,
+        4,
+        "Good Count",
+        "parts",
+        "Number of good measurements",
+        0,4294967295,0,
+        ,,,,
+        ,,,,
+        0,
+        ;
+
+    Param6 =
+        0,
+        ,,
+        0x0000,
+        0xC7,
+        4,
+        "Bad Count",
+        "parts",
+        "Number of bad measurements",
+        0,4294967295,0,
+        ,,,,
+        ,,,,
+        0,
+        ;
+
+[Assembly]
+    $ Input Assembly (Sensor -> PLC)
+    Assem100 =
+        "Input Assembly",
+        ,
+        64,
+        0x0001,
+        ,,
+        16,Param1,Param2,Param3,Param4,Param5,Param6,
+        Param7,Param8,Param9,Param10,Param11,Param12,
+        Param13,Param14,Param15,Param16;
+
+    $ Output Assembly (PLC -> Sensor)
+    Assem101 =
+        "Output Assembly",
+        ,
+        32,
+        0x0001,
+        ,,
+        8,Param20,Param21,Param22,Param23,Param24,Param25,Param26,Param27;
+
+    $ Configuration Assembly
+    Assem102 =
+        "Configuration Assembly",
+        ,
+        16,
+        0x0001,
+        ,,
+        0;
+
+[Connection Manager]
+    Connection1 =
+        0x04010002,             $ trigger & transport
+                                $ 0 = cyclic
+                                $ 1 = change of state
+                                $ 2 = application triggered
+        0x44640405,             $ connection parameters
+                                $ O->T: 32-bit, variable, P2P
+                                $ T->O: 32-bit, variable, P2P
+        ,,Assem101,             $ O->T RPI, size, format
+        ,,Assem100,             $ T->O RPI, size, format
+        ,Assem102,              $ config #1 size, format
+        ,                       $ config #2 size, format
+        "Exclusive Owner",      $ connection name
+        "",                     $ help string
+        "20 04 24 65 2C 66 2C 64";  $ path
+
+    Connection2 =
+        0x02010002,
+        0x44240305,
+        ,,Assem100,
+        ,,,
+        ,,
+        ,
+        "Input Only",
+        "Listen only connection for monitoring",
+        "20 04 24 64 2C 64";
+
+[Capacity]
+    MaxIOConnections = 4;
+    MaxMsgConnections = 8;
+    MaxConsumersPerMcast = 4;
+    TSpec1 = TxRx, 16, 500;
+
+[TCP/IP Interface Class]
+    Revision = 4;
+    MaxInst = 1;
+    Number_Of_Static_Instances = 1;
+    Max_Number_Of_Dynamic_Instances = 0;
+
+[Ethernet Link Class]
+    Revision = 4;
+    MaxInst = 1;
+    Number_Of_Static_Instances = 1;
+    Max_Number_Of_Dynamic_Instances = 0;
+
+[Identity Class]
+    Revision = 1;
+    MaxInst = 1;
+    Number_Of_Static_Instances = 1;
+    Max_Number_Of_Dynamic_Instances = 0;
+
+[Connection Manager Class]
+    Revision = 1;
+    MaxInst = 1;
+    Number_Of_Static_Instances = 1;
+    Max_Number_Of_Dynamic_Instances = 0;
+
+[Modular]
+    $ Not a modular device

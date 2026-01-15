@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+    MRS1000 LIDAR Sample Program for Rockwell Studio 5000
+
+    This file contains:
+    - Sample tags for the MRS1000 LIDAR sensor
+    - Add-On Instruction (AOI) for data processing
+    - Sample ladder logic routine
+
+    Import Instructions:
+    1. First import MRS1000_DataTypes.L5X
+    2. Then import this file
+    3. Configure your Generic Ethernet Module with the EDS file
+    4. Map the I/O to the LIDAR_Raw tags
+-->
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="32.00" TargetName="MRS1000_Program" TargetType="Program" ContainsContext="false" Owner="Custom Integration" ExportDate="Wed Jan 15 12:00:00 2025" ExportOptions="DecoratedData ForceProtectedEncoding AllProjDocTrans">
+    <Controller Use="Context" Name="MRS1000_Controller">
+        <Programs Use="Context">
+            <Program Name="MRS1000_Program" TestEdits="false" MainRoutineName="MainRoutine" Disabled="false" UseAsFolder="false">
+                <Description>
+                    <![CDATA[MRS1000 LIDAR Sensor Interface Program]]>
+                </Description>
+                <Tags>
+                    <!-- Raw I/O Data from Generic Ethernet Module -->
+                    <Tag Name="LIDAR_RawInput" TagType="Base" DataType="SINT" Dimensions="64" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Raw input data from LIDAR (map to Generic Ethernet Module input)]]>
+                        </Description>
+                    </Tag>
+                    <Tag Name="LIDAR_RawOutput" TagType="Base" DataType="SINT" Dimensions="32" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Raw output data to LIDAR (map to Generic Ethernet Module output)]]>
+                        </Description>
+                    </Tag>
+
+                    <!-- Processed Data -->
+                    <Tag Name="LIDAR" TagType="Base" DataType="MRS1000_Device" Radix="NullType" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[Processed LIDAR sensor data]]>
+                        </Description>
+                    </Tag>
+
+                    <!-- Control Tags -->
+                    <Tag Name="LIDAR_ResetStats" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[One-shot: Reset statistics counters]]>
+                        </Description>
+                    </Tag>
+                    <Tag Name="LIDAR_ChangeProduct" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[One-shot: Change active product]]>
+                        </Description>
+                    </Tag>
+                    <Tag Name="LIDAR_NewProductID" TagType="Base" DataType="SINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write">
+                        <Description>
+                            <![CDATA[New product ID to activate]]>
+                        </Description>
+                    </Tag>
+
+                    <!-- One-shot helpers -->
+                    <Tag Name="LIDAR_ResetStats_OS" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="None">
+                        <Description>
+                            <![CDATA[One-shot storage for reset stats]]>
+                        </Description>
+                    </Tag>
+                    <Tag Name="LIDAR_ChangeProduct_OS" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="None">
+                        <Description>
+                            <![CDATA[One-shot storage for change product]]>
+                        </Description>
+                    </Tag>
+                </Tags>
+
+                <Routines>
+                    <Routine Name="MainRoutine" Type="RLL">
+                        <Description>
+                            <![CDATA[Main routine for MRS1000 LIDAR processing]]>
+                        </Description>
+                        <RLLContent>
+                            <!-- Rung 0: Copy raw input to structured data -->
+                            <Rung Number="0" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy raw input bytes to structured input data
+Status byte, Product ID, Result, Zone Count]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[MOV(LIDAR_RawInput[0],LIDAR.Input.Status)MOV(LIDAR_RawInput[1],LIDAR.Input.ActiveProductID)MOV(LIDAR_RawInput[2],LIDAR.Input.OverallResult)MOV(LIDAR_RawInput[3],LIDAR.Input.ZoneCount);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 1: Copy statistics (DINT values from bytes 4-19) -->
+                            <Rung Number="1" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy statistics counters (32-bit values)
+Note: Uses COP to copy 4 bytes to DINT]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[COP(LIDAR_RawInput[4],LIDAR.Input.ScanCounter,1)COP(LIDAR_RawInput[8],LIDAR.Input.GoodCount,1)COP(LIDAR_RawInput[12],LIDAR.Input.BadCount,1)COP(LIDAR_RawInput[16],LIDAR.Input.GoodRate,1);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 2: Copy zone measurements -->
+                            <Rung Number="2" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy zone measurement data (32-bit values)
+Zone 1-4 measurements and results]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[COP(LIDAR_RawInput[20],LIDAR.Input.Zone1_Measurement,1)COP(LIDAR_RawInput[24],LIDAR.Input.Zone1_Result,1)COP(LIDAR_RawInput[28],LIDAR.Input.Zone2_Measurement,1)COP(LIDAR_RawInput[32],LIDAR.Input.Zone2_Result,1)COP(LIDAR_RawInput[36],LIDAR.Input.Zone3_Measurement,1)COP(LIDAR_RawInput[40],LIDAR.Input.Zone3_Result,1)COP(LIDAR_RawInput[44],LIDAR.Input.Zone4_Measurement,1)COP(LIDAR_RawInput[48],LIDAR.Input.Zone4_Result,1);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 3: Copy timestamp and distance range -->
+                            <Rung Number="3" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy timestamp and distance range]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[COP(LIDAR_RawInput[52],LIDAR.Input.Timestamp,1)COP(LIDAR_RawInput[56],LIDAR.Input.MinDistance,1)COP(LIDAR_RawInput[60],LIDAR.Input.MaxDistance,1);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 4: Set boolean status flags -->
+                            <Rung Number="4" Type="N">
+                                <Comment>
+                                    <![CDATA[Set convenience boolean flags based on status values]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[EQU(LIDAR.Input.OverallResult,1)OTE(LIDAR.Input.IsGood);]]>
+                                </Text>
+                            </Rung>
+
+                            <Rung Number="5" Type="N">
+                                <Text>
+                                    <![CDATA[EQU(LIDAR.Input.OverallResult,2)OTE(LIDAR.Input.IsBad);]]>
+                                </Text>
+                            </Rung>
+
+                            <Rung Number="6" Type="N">
+                                <Text>
+                                    <![CDATA[[GRT(LIDAR.Input.Status,0) ,NEQ(LIDAR.Input.Status,2) ]OTE(LIDAR.Input.IsOnline);]]>
+                                </Text>
+                            </Rung>
+
+                            <Rung Number="7" Type="N">
+                                <Text>
+                                    <![CDATA[EQU(LIDAR.Input.Status,2)OTE(LIDAR.Input.IsError);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 8: Process zone data -->
+                            <Rung Number="8" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy zone data to structured zone array]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[MOV(LIDAR.Input.Zone1_Measurement,LIDAR.Zone[0].Measurement)MOV(LIDAR.Input.Zone1_Result,LIDAR.Zone[0].Result)MOV(LIDAR.Input.Zone2_Measurement,LIDAR.Zone[1].Measurement)MOV(LIDAR.Input.Zone2_Result,LIDAR.Zone[1].Result)MOV(LIDAR.Input.Zone3_Measurement,LIDAR.Zone[2].Measurement)MOV(LIDAR.Input.Zone3_Result,LIDAR.Zone[2].Result)MOV(LIDAR.Input.Zone4_Measurement,LIDAR.Zone[3].Measurement)MOV(LIDAR.Input.Zone4_Result,LIDAR.Zone[3].Result);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 9: Set zone boolean flags -->
+                            <Rung Number="9" Type="N">
+                                <Comment>
+                                    <![CDATA[Set zone IsGood/IsBad flags for each zone]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[EQU(LIDAR.Zone[0].Result,1)OTE(LIDAR.Zone[0].IsGood);]]>
+                                </Text>
+                            </Rung>
+
+                            <Rung Number="10" Type="N">
+                                <Text>
+                                    <![CDATA[EQU(LIDAR.Zone[0].Result,2)OTE(LIDAR.Zone[0].IsBad);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 11: Calculate statistics -->
+                            <Rung Number="11" Type="N">
+                                <Comment>
+                                    <![CDATA[Calculate real good rate percentage and total parts]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[DIV(LIDAR.Input.GoodRate,100.0,LIDAR.Stats.GoodRateReal)ADD(LIDAR.Input.GoodCount,LIDAR.Input.BadCount,LIDAR.Stats.TotalParts);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 12: Handle Reset Statistics command -->
+                            <Rung Number="12" Type="N">
+                                <Comment>
+                                    <![CDATA[Send reset statistics command on rising edge]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[XIC(LIDAR_ResetStats)ONS(LIDAR_ResetStats_OS)MOV(1,LIDAR.Output.Command);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 13: Handle Change Product command -->
+                            <Rung Number="13" Type="N">
+                                <Comment>
+                                    <![CDATA[Send change product command on rising edge]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[XIC(LIDAR_ChangeProduct)ONS(LIDAR_ChangeProduct_OS)[MOV(2,LIDAR.Output.Command) ,MOV(LIDAR_NewProductID,LIDAR.Output.ProductID) ];]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 14: Clear command after one scan -->
+                            <Rung Number="14" Type="N">
+                                <Comment>
+                                    <![CDATA[Auto-clear command after processing]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[GRT(LIDAR.Output.Command,0)MOV(0,LIDAR.Output.Command);]]>
+                                </Text>
+                            </Rung>
+
+                            <!-- Rung 15: Copy output data to raw output -->
+                            <Rung Number="15" Type="N">
+                                <Comment>
+                                    <![CDATA[Copy structured output to raw output bytes]]>
+                                </Comment>
+                                <Text>
+                                    <![CDATA[MOV(LIDAR.Output.Command,LIDAR_RawOutput[0])MOV(LIDAR.Output.ProductID,LIDAR_RawOutput[1])COP(LIDAR.Output.Zone1_ExpectedDist,LIDAR_RawOutput[4],1)COP(LIDAR.Output.Zone1_Tolerance,LIDAR_RawOutput[8],1)COP(LIDAR.Output.Zone2_ExpectedDist,LIDAR_RawOutput[12],1)COP(LIDAR.Output.Zone2_Tolerance,LIDAR_RawOutput[16],1);]]>
+                                </Text>
+                            </Rung>
+                        </RLLContent>
+                    </Routine>
+                </Routines>
+            </Program>
+        </Programs>
+    </Controller>
+</RSLogix5000Content>

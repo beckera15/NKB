@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Add-On Profile (AOP) for SICK MRS1000 LIDAR Sensor
+    For Rockwell Automation Studio 5000 Logix Designer
+
+    This AOP provides native integration of the MRS1000 LIDAR
+    sensor with ControlLogix and CompactLogix controllers.
+
+    Installation:
+    1. Copy this file to: C:\Program Files\Rockwell Software\RSLogix 5000\AOPXML\
+    2. Restart Studio 5000
+    3. The device will appear in "Other" category
+-->
+<AddOnProfile xmlns="http://www.rockwellautomation.com/aop/2006"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://www.rockwellautomation.com/aop/2006 AddOnProfile.xsd">
+
+    <!-- Profile Identification -->
+    <ProfileIdentification>
+        <ProfileType>Generic</ProfileType>
+        <ProfileVersion>1.0</ProfileVersion>
+        <VendorID>65535</VendorID>
+        <VendorName>Custom Integration</VendorName>
+        <ProductType>43</ProductType>
+        <ProductCode>1000</ProductCode>
+        <MajorRevision>1</MajorRevision>
+        <MinorRevision>0</MinorRevision>
+        <ProductName>MRS1000 LIDAR Sensor</ProductName>
+        <CatalogNumber>MRS1000-EIPGW</CatalogNumber>
+        <Description>SICK MRS1000 3D Multi-Layer LIDAR Sensor with EtherNet/IP Gateway. Provides real-time distance measurements and zone-based GOOD/BAD evaluation for quality inspection applications.</Description>
+    </ProfileIdentification>
+
+    <!-- Categories for device tree -->
+    <Categories>
+        <Category>Sensors</Category>
+        <Category>LIDAR</Category>
+        <Category>Vision</Category>
+    </Categories>
+
+    <!-- Port Configuration -->
+    <Ports>
+        <Port>
+            <PortNumber>1</PortNumber>
+            <PortType>Ethernet</PortType>
+            <Protocol>EtherNet/IP</Protocol>
+            <Description>EtherNet/IP Communication Port</Description>
+        </Port>
+    </Ports>
+
+    <!-- Connection Types -->
+    <Connections>
+        <!-- Exclusive Owner Connection -->
+        <Connection Name="ExclusiveOwner">
+            <Type>ExclusiveOwner</Type>
+            <Description>Full read/write access to sensor data and configuration</Description>
+            <RPI Min="2000" Max="500000" Default="10000"/>
+            <InputAssembly Instance="100" Size="64"/>
+            <OutputAssembly Instance="101" Size="32"/>
+            <ConfigAssembly Instance="102" Size="16"/>
+        </Connection>
+
+        <!-- Input Only Connection -->
+        <Connection Name="InputOnly">
+            <Type>InputOnly</Type>
+            <Description>Read-only access to sensor data</Description>
+            <RPI Min="2000" Max="500000" Default="10000"/>
+            <InputAssembly Instance="100" Size="64"/>
+        </Connection>
+
+        <!-- Listen Only Connection -->
+        <Connection Name="ListenOnly">
+            <Type>ListenOnly</Type>
+            <Description>Monitor sensor data without ownership</Description>
+            <RPI Min="2000" Max="500000" Default="20000"/>
+            <InputAssembly Instance="100" Size="64"/>
+        </Connection>
+    </Connections>
+
+    <!-- User Defined Data Types -->
+    <DataTypes>
+        <!-- Zone Data Structure -->
+        <DataType Name="MRS1000_Zone">
+            <Description>Single measurement zone data</Description>
+            <Members>
+                <Member Name="Measurement" DataType="DINT">
+                    <Description>Current measurement in mm</Description>
+                </Member>
+                <Member Name="Result" DataType="DINT">
+                    <Description>Zone result (0=Unknown, 1=Good, 2=Bad)</Description>
+                </Member>
+                <Member Name="ExpectedDistance" DataType="DINT">
+                    <Description>Expected distance in mm (config)</Description>
+                </Member>
+                <Member Name="Tolerance" DataType="DINT">
+                    <Description>Tolerance in mm (config)</Description>
+                </Member>
+            </Members>
+        </DataType>
+
+        <!-- Statistics Structure -->
+        <DataType Name="MRS1000_Stats">
+            <Description>Measurement statistics</Description>
+            <Members>
+                <Member Name="ScanCounter" DataType="DINT">
+                    <Description>Total scans processed</Description>
+                </Member>
+                <Member Name="GoodCount" DataType="DINT">
+                    <Description>Number of good parts</Description>
+                </Member>
+                <Member Name="BadCount" DataType="DINT">
+                    <Description>Number of bad parts</Description>
+                </Member>
+                <Member Name="GoodRate" DataType="DINT">
+                    <Description>Good rate x100 (9850 = 98.50%)</Description>
+                </Member>
+            </Members>
+        </DataType>
+
+        <!-- Main Input Data Structure -->
+        <DataType Name="MRS1000_Input">
+            <Description>LIDAR sensor input data (64 bytes)</Description>
+            <Members>
+                <Member Name="Status" DataType="SINT">
+                    <Description>0=Offline, 1=Running, 2=Error, 3=Simulation</Description>
+                </Member>
+                <Member Name="ActiveProductID" DataType="SINT">
+                    <Description>Currently active product configuration</Description>
+                </Member>
+                <Member Name="OverallResult" DataType="SINT">
+                    <Description>0=Unknown, 1=Good, 2=Bad, 3=NoTarget, 4=Error</Description>
+                </Member>
+                <Member Name="ZoneCount" DataType="SINT">
+                    <Description>Number of configured zones</Description>
+                </Member>
+                <Member Name="Stats" DataType="MRS1000_Stats">
+                    <Description>Measurement statistics</Description>
+                </Member>
+                <Member Name="Zone" DataType="MRS1000_Zone" Dimension="4">
+                    <Description>Zone measurement data (4 zones max)</Description>
+                </Member>
+                <Member Name="Timestamp" DataType="DINT">
+                    <Description>Milliseconds since sensor start</Description>
+                </Member>
+                <Member Name="MinDistance" DataType="DINT">
+                    <Description>Minimum distance in current scan (mm)</Description>
+                </Member>
+                <Member Name="MaxDistance" DataType="DINT">
+                    <Description>Maximum distance in current scan (mm)</Description>
+                </Member>
+            </Members>
+        </DataType>
+
+        <!-- Main Output Data Structure -->
+        <DataType Name="MRS1000_Output">
+            <Description>LIDAR sensor output data (32 bytes)</Description>
+            <Members>
+                <Member Name="Command" DataType="SINT">
+                    <Description>0=None, 1=ResetStats, 2=ChangeProduct</Description>
+                </Member>
+                <Member Name="ProductID" DataType="SINT">
+                    <Description>Product ID to activate (when Command=2)</Description>
+                </Member>
+                <Member Name="Reserved1" DataType="INT">
+                    <Description>Reserved for future use</Description>
+                </Member>
+                <Member Name="Zone1_ExpectedDist" DataType="DINT">
+                    <Description>Zone 1 expected distance (mm)</Description>
+                </Member>
+                <Member Name="Zone1_Tolerance" DataType="DINT">
+                    <Description>Zone 1 tolerance (mm)</Description>
+                </Member>
+                <Member Name="Zone2_ExpectedDist" DataType="DINT">
+                    <Description>Zone 2 expected distance (mm)</Description>
+                </Member>
+                <Member Name="Zone2_Tolerance" DataType="DINT">
+                    <Description>Zone 2 tolerance (mm)</Description>
+                </Member>
+                <Member Name="Reserved2" DataType="SINT" Dimension="12">
+                    <Description>Reserved for expansion</Description>
+                </Member>
+            </Members>
+        </DataType>
+    </DataTypes>
+
+    <!-- Assembly Mapping -->
+    <AssemblyMapping>
+        <InputAssembly Instance="100">
+            <DataType>MRS1000_Input</DataType>
+            <ByteMap>
+                <!-- Status Block: Bytes 0-3 -->
+                <Map Member="Status" Offset="0" Size="1"/>
+                <Map Member="ActiveProductID" Offset="1" Size="1"/>
+                <Map Member="OverallResult" Offset="2" Size="1"/>
+                <Map Member="ZoneCount" Offset="3" Size="1"/>
+
+                <!-- Statistics: Bytes 4-19 -->
+                <Map Member="Stats.ScanCounter" Offset="4" Size="4"/>
+                <Map Member="Stats.GoodCount" Offset="8" Size="4"/>
+                <Map Member="Stats.BadCount" Offset="12" Size="4"/>
+                <Map Member="Stats.GoodRate" Offset="16" Size="4"/>
+
+                <!-- Zone Data: Bytes 20-51 -->
+                <Map Member="Zone[0].Measurement" Offset="20" Size="4"/>
+                <Map Member="Zone[0].Result" Offset="24" Size="4"/>
+                <Map Member="Zone[1].Measurement" Offset="28" Size="4"/>
+                <Map Member="Zone[1].Result" Offset="32" Size="4"/>
+                <Map Member="Zone[2].Measurement" Offset="36" Size="4"/>
+                <Map Member="Zone[2].Result" Offset="40" Size="4"/>
+                <Map Member="Zone[3].Measurement" Offset="44" Size="4"/>
+                <Map Member="Zone[3].Result" Offset="48" Size="4"/>
+
+                <!-- Additional Data: Bytes 52-63 -->
+                <Map Member="Timestamp" Offset="52" Size="4"/>
+                <Map Member="MinDistance" Offset="56" Size="4"/>
+                <Map Member="MaxDistance" Offset="60" Size="4"/>
+            </ByteMap>
+        </InputAssembly>
+
+        <OutputAssembly Instance="101">
+            <DataType>MRS1000_Output</DataType>
+            <ByteMap>
+                <Map Member="Command" Offset="0" Size="1"/>
+                <Map Member="ProductID" Offset="1" Size="1"/>
+                <Map Member="Reserved1" Offset="2" Size="2"/>
+                <Map Member="Zone1_ExpectedDist" Offset="4" Size="4"/>
+                <Map Member="Zone1_Tolerance" Offset="8" Size="4"/>
+                <Map Member="Zone2_ExpectedDist" Offset="12" Size="4"/>
+                <Map Member="Zone2_Tolerance" Offset="16" Size="4"/>
+                <Map Member="Reserved2" Offset="20" Size="12"/>
+            </ByteMap>
+        </OutputAssembly>
+    </AssemblyMapping>
+
+    <!-- Module Definition File Reference (alternative to embedded) -->
+    <ModuleDefinition>
+        <EDSFile>MRS1000_LIDAR.eds</EDSFile>
+    </ModuleDefinition>
+
+</AddOnProfile>

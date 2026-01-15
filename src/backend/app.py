@@ -39,6 +39,7 @@ from measurement_evaluator import (
 )
 from opcua_server import OPCUAServerWrapper
 from modbus_server import ModbusTCPServer
+from ethernetip_server import EtherNetIPServerWrapper
 
 # Configure logging
 logging.basicConfig(
@@ -77,6 +78,9 @@ class AppConfig:
     opcua_port: int = 4840
     enable_modbus: bool = True
     modbus_port: int = 502
+    enable_ethernetip: bool = True
+    ethernetip_tcp_port: int = 44818
+    ethernetip_udp_port: int = 2222
 
 
 class LidarVisualizationApp:
@@ -134,6 +138,7 @@ class LidarVisualizationApp:
         # Communication servers
         self.opcua_server: Optional[OPCUAServerWrapper] = None
         self.modbus_server: Optional[ModbusTCPServer] = None
+        self.ethernetip_server: Optional[EtherNetIPServerWrapper] = None
 
         # Latest measurement result
         self.latest_result: Optional[ProductConfig] = None
@@ -191,6 +196,21 @@ class LidarVisualizationApp:
             except Exception as e:
                 logger.warning(f"Modbus server not available: {e}")
 
+        # Start EtherNet/IP server for Rockwell native integration
+        if self.config.enable_ethernetip:
+            try:
+                self.ethernetip_server = EtherNetIPServerWrapper(
+                    host="0.0.0.0",
+                    tcp_port=self.config.ethernetip_tcp_port,
+                    udp_port=self.config.ethernetip_udp_port
+                )
+                if await self.ethernetip_server.start():
+                    logger.info(f"EtherNet/IP server started - TCP:{self.config.ethernetip_tcp_port}, UDP:{self.config.ethernetip_udp_port}")
+                else:
+                    logger.warning("EtherNet/IP server failed to start")
+            except Exception as e:
+                logger.warning(f"EtherNet/IP server not available: {e}")
+
     def _on_measurement_result(self, product: ProductConfig) -> None:
         """Callback when measurement evaluation completes"""
         self.latest_result = product
@@ -204,6 +224,27 @@ class LidarVisualizationApp:
 
         if self.modbus_server:
             self.modbus_server.update_from_product(product, stats)
+
+        if self.ethernetip_server:
+            # Get zone measurements and results
+            zone_measurements = []
+            zone_results = []
+            for zone in product.zones[:4]:
+                zone_measurements.append(int(zone.last_measurement * 1000) if zone.last_measurement else 0)
+                zone_results.append(int(zone.last_result))
+
+            self.ethernetip_server.update_measurement_data(
+                status=3 if self.config.simulation_mode else 1,  # 3=Sim, 1=Running
+                product_id=product.id,
+                overall_result=int(product.last_result),
+                zone_count=len(product.zones),
+                scan_counter=stats.get('total_evaluations', 0),
+                good_count=stats.get('good_count', 0),
+                bad_count=stats.get('bad_count', 0),
+                good_rate=stats.get('good_rate', 0.0),
+                zone_measurements=zone_measurements,
+                zone_results=zone_results
+            )
 
         # Broadcast to WebSocket clients
         asyncio.run_coroutine_threadsafe(
@@ -250,6 +291,8 @@ class LidarVisualizationApp:
             self.opcua_server.stop()
         if self.modbus_server:
             self.modbus_server.stop()
+        if self.ethernetip_server:
+            await self.ethernetip_server.stop()
 
         # Close all WebSocket connections
         for ws in list(self.ws_clients):
@@ -634,6 +677,12 @@ async def main():
                         help='Disable Modbus TCP server')
     parser.add_argument('--modbus-port', type=int, default=502,
                         help='Modbus TCP server port (default: 502)')
+    parser.add_argument('--no-ethernetip', action='store_true',
+                        help='Disable EtherNet/IP server (Rockwell native)')
+    parser.add_argument('--eip-tcp-port', type=int, default=44818,
+                        help='EtherNet/IP TCP port (default: 44818)')
+    parser.add_argument('--eip-udp-port', type=int, default=2222,
+                        help='EtherNet/IP UDP port (default: 2222)')
 
     args = parser.parse_args()
 
@@ -650,6 +699,9 @@ async def main():
         opcua_port=args.opcua_port,
         enable_modbus=not args.no_modbus,
         modbus_port=args.modbus_port,
+        enable_ethernetip=not args.no_ethernetip,
+        ethernetip_tcp_port=args.eip_tcp_port,
+        ethernetip_udp_port=args.eip_udp_port,
     )
 
     app = LidarVisualizationApp(config)
