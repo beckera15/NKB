@@ -302,9 +302,9 @@ docker build -f docker/Dockerfile -t mrs1000-lidar-viz .
 docker run -p 8080:8080 -p 4840:4840 -p 502:502 -p 44818:44818 -p 2222:2222/udp \
   mrs1000-lidar-viz python backend/app.py --simulate
 
-# Run with real sensor
+# Run with real sensor (replace 192.168.1.100 with your MRS1000 IP)
 docker run -p 8080:8080 -p 2112:2112/udp -p 4840:4840 -p 502:502 -p 44818:44818 -p 2222:2222/udp \
-  mrs1000-lidar-viz
+  mrs1000-lidar-viz python backend/app.py --sensor-ip 192.168.1.100
 ```
 
 ### Docker Compose
