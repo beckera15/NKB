@@ -6,6 +6,9 @@ Main application that combines:
 - WebSocket server for real-time data streaming to web clients
 - HTTP server for serving the visualization frontend
 - Optional simulation mode for testing without hardware
+- Measurement evaluation with GOOD/BAD results
+- OPC-UA server for Ignition integration
+- Modbus TCP server for Rockwell PLC integration
 
 Designed to run on Red Lion Flex Edge industrial edge computing platform.
 """
@@ -30,6 +33,12 @@ import aiohttp
 
 from mrs1000_parser import MRS1000Parser, MRS1000SimulatedParser, ScanData
 from udp_receiver import MRS1000Receiver, ReceiverConfig
+from measurement_evaluator import (
+    MeasurementEvaluator, ProductConfig, MeasurementZone,
+    MeasurementResult, create_example_product
+)
+from opcua_server import OPCUAServerWrapper
+from modbus_server import ModbusTCPServer
 
 # Configure logging
 logging.basicConfig(
@@ -61,6 +70,13 @@ class AppConfig:
 
     # Paths
     static_path: str = "../frontend"
+    config_path: str = "../config/products.json"
+
+    # Communication servers
+    enable_opcua: bool = True
+    opcua_port: int = 4840
+    enable_modbus: bool = True
+    modbus_port: int = 502
 
 
 class LidarVisualizationApp:
@@ -71,6 +87,8 @@ class LidarVisualizationApp:
     - Receiving LIDAR data (real or simulated)
     - WebSocket connections for real-time streaming
     - HTTP server for web frontend
+    - Measurement evaluation with GOOD/BAD results
+    - OPC-UA and Modbus TCP servers for PLC/SCADA integration
     """
 
     def __init__(self, config: AppConfig):
@@ -102,6 +120,24 @@ class LidarVisualizationApp:
             logger.warning(f"Static path not found: {self.static_path}")
             self.static_path = Path(__file__).parent.parent / "frontend"
 
+        # Measurement evaluation
+        config_path = Path(__file__).parent / self.config.config_path
+        self.evaluator = MeasurementEvaluator(str(config_path))
+        self.evaluator.add_result_callback(self._on_measurement_result)
+
+        # Create example product if none exist
+        if not self.evaluator.products:
+            example = create_example_product()
+            self.evaluator.add_product(example)
+            logger.info("Created example product configuration")
+
+        # Communication servers
+        self.opcua_server: Optional[OPCUAServerWrapper] = None
+        self.modbus_server: Optional[ModbusTCPServer] = None
+
+        # Latest measurement result
+        self.latest_result: Optional[ProductConfig] = None
+
     async def start(self) -> None:
         """Start the application"""
         logger.info("Starting MRS1000 LIDAR Visualization App")
@@ -115,8 +151,82 @@ class LidarVisualizationApp:
             logger.info("Running in LIVE mode")
             await self._start_receiver()
 
+        # Start communication servers
+        await self._start_communication_servers()
+
         # Start web server
         await self._start_web_server()
+
+    async def _start_communication_servers(self) -> None:
+        """Start OPC-UA and Modbus TCP servers"""
+        loop = asyncio.get_event_loop()
+
+        # Start OPC-UA server for Ignition
+        if self.config.enable_opcua:
+            try:
+                self.opcua_server = OPCUAServerWrapper(
+                    f"opc.tcp://0.0.0.0:{self.config.opcua_port}/lidar/"
+                )
+                if self.opcua_server.start(loop):
+                    logger.info(f"OPC-UA server started on port {self.config.opcua_port}")
+                else:
+                    logger.warning("OPC-UA server failed to start (library may not be installed)")
+            except Exception as e:
+                logger.warning(f"OPC-UA server not available: {e}")
+
+        # Start Modbus TCP server for Rockwell PLCs
+        if self.config.enable_modbus:
+            try:
+                self.modbus_server = ModbusTCPServer(
+                    host="0.0.0.0",
+                    port=self.config.modbus_port
+                )
+                self.modbus_server.set_reset_stats_callback(self.evaluator.reset_statistics)
+                self.modbus_server.set_product_callback(self.evaluator.set_active_product)
+
+                if self.modbus_server.start():
+                    logger.info(f"Modbus TCP server started on port {self.config.modbus_port}")
+                else:
+                    logger.warning("Modbus server failed to start")
+            except Exception as e:
+                logger.warning(f"Modbus server not available: {e}")
+
+    def _on_measurement_result(self, product: ProductConfig) -> None:
+        """Callback when measurement evaluation completes"""
+        self.latest_result = product
+
+        # Update communication servers
+        stats = self.evaluator.get_statistics()
+
+        if self.opcua_server:
+            self.opcua_server.update_product_result(product)
+            self.opcua_server.update_statistics(stats)
+
+        if self.modbus_server:
+            self.modbus_server.update_from_product(product, stats)
+
+        # Broadcast to WebSocket clients
+        asyncio.run_coroutine_threadsafe(
+            self._broadcast_measurement_result(product),
+            asyncio.get_event_loop()
+        )
+
+    async def _broadcast_measurement_result(self, product: ProductConfig) -> None:
+        """Broadcast measurement result to WebSocket clients"""
+        if not self.ws_clients:
+            return
+
+        message = json.dumps({
+            'type': 'measurement',
+            'data': product.to_dict(),
+            'statistics': self.evaluator.get_statistics(),
+        })
+
+        for ws in list(self.ws_clients):
+            try:
+                await ws.send_str(message)
+            except Exception:
+                pass
 
     async def stop(self) -> None:
         """Stop the application"""
@@ -134,6 +244,12 @@ class LidarVisualizationApp:
         # Stop receiver
         if self.receiver:
             self.receiver.stop()
+
+        # Stop communication servers
+        if self.opcua_server:
+            self.opcua_server.stop()
+        if self.modbus_server:
+            self.modbus_server.stop()
 
         # Close all WebSocket connections
         for ws in list(self.ws_clients):
@@ -191,6 +307,9 @@ class LidarVisualizationApp:
 
     async def _broadcast_scan(self, scan: ScanData) -> None:
         """Broadcast scan data to all connected WebSocket clients"""
+        # Evaluate measurements
+        self.evaluator.evaluate_scan(scan)
+
         if not self.ws_clients:
             return
 
@@ -228,6 +347,19 @@ class LidarVisualizationApp:
         app.router.add_get('/api/status', self._handle_status)
         app.router.add_get('/api/config', self._handle_config)
         app.router.add_post('/api/config', self._handle_set_config)
+
+        # Product/Zone API routes
+        app.router.add_get('/api/products', self._handle_get_products)
+        app.router.add_post('/api/products', self._handle_create_product)
+        app.router.add_get('/api/products/{id}', self._handle_get_product)
+        app.router.add_put('/api/products/{id}', self._handle_update_product)
+        app.router.add_delete('/api/products/{id}', self._handle_delete_product)
+        app.router.add_post('/api/products/{id}/activate', self._handle_activate_product)
+
+        # Measurement results API
+        app.router.add_get('/api/measurements', self._handle_get_measurements)
+        app.router.add_get('/api/statistics', self._handle_get_statistics)
+        app.router.add_post('/api/statistics/reset', self._handle_reset_statistics)
 
         # Static files (frontend)
         if self.static_path.exists():
@@ -353,6 +485,104 @@ class LidarVisualizationApp:
         except Exception as e:
             return web.json_response({'error': str(e)}, status=400)
 
+    # Product/Zone API handlers
+    async def _handle_get_products(self, request: web.Request) -> web.Response:
+        """Get all product configurations"""
+        products = self.evaluator.list_products()
+        active_id = self.evaluator.active_product_id
+        return web.json_response({
+            'products': products,
+            'active_product_id': active_id,
+        })
+
+    async def _handle_create_product(self, request: web.Request) -> web.Response:
+        """Create a new product configuration"""
+        try:
+            data = await request.json()
+            product = ProductConfig.from_dict(data)
+
+            # Generate ID if not provided
+            if product.id == 0:
+                existing_ids = set(self.evaluator.products.keys())
+                product.id = max(existing_ids, default=0) + 1
+
+            self.evaluator.add_product(product)
+            return web.json_response({
+                'status': 'ok',
+                'product': product.to_dict()
+            })
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=400)
+
+    async def _handle_get_product(self, request: web.Request) -> web.Response:
+        """Get a specific product configuration"""
+        try:
+            product_id = int(request.match_info['id'])
+            product = self.evaluator.get_product(product_id)
+            if product:
+                return web.json_response(product.to_dict())
+            return web.json_response({'error': 'Product not found'}, status=404)
+        except ValueError:
+            return web.json_response({'error': 'Invalid product ID'}, status=400)
+
+    async def _handle_update_product(self, request: web.Request) -> web.Response:
+        """Update a product configuration"""
+        try:
+            product_id = int(request.match_info['id'])
+            data = await request.json()
+            data['id'] = product_id
+
+            product = ProductConfig.from_dict(data)
+            self.evaluator.add_product(product)
+
+            return web.json_response({
+                'status': 'ok',
+                'product': product.to_dict()
+            })
+        except Exception as e:
+            return web.json_response({'error': str(e)}, status=400)
+
+    async def _handle_delete_product(self, request: web.Request) -> web.Response:
+        """Delete a product configuration"""
+        try:
+            product_id = int(request.match_info['id'])
+            if self.evaluator.remove_product(product_id):
+                return web.json_response({'status': 'ok'})
+            return web.json_response({'error': 'Product not found'}, status=404)
+        except ValueError:
+            return web.json_response({'error': 'Invalid product ID'}, status=400)
+
+    async def _handle_activate_product(self, request: web.Request) -> web.Response:
+        """Set a product as the active product for evaluation"""
+        try:
+            product_id = int(request.match_info['id'])
+            if self.evaluator.set_active_product(product_id):
+                return web.json_response({'status': 'ok', 'active_product_id': product_id})
+            return web.json_response({'error': 'Product not found'}, status=404)
+        except ValueError:
+            return web.json_response({'error': 'Invalid product ID'}, status=400)
+
+    async def _handle_get_measurements(self, request: web.Request) -> web.Response:
+        """Get latest measurement results"""
+        if self.latest_result:
+            return web.json_response({
+                'result': self.latest_result.to_dict(),
+                'statistics': self.evaluator.get_statistics(),
+            })
+        return web.json_response({
+            'result': None,
+            'statistics': self.evaluator.get_statistics(),
+        })
+
+    async def _handle_get_statistics(self, request: web.Request) -> web.Response:
+        """Get evaluation statistics"""
+        return web.json_response(self.evaluator.get_statistics())
+
+    async def _handle_reset_statistics(self, request: web.Request) -> web.Response:
+        """Reset evaluation statistics"""
+        self.evaluator.reset_statistics()
+        return web.json_response({'status': 'ok'})
+
     def _get_status(self) -> dict:
         """Get current application status"""
         uptime = time.time() - self.stats['start_time']
@@ -392,6 +622,16 @@ async def main():
                         help='Simulation scan rate in Hz (default: 12.5)')
     parser.add_argument('--static', type=str, default='../frontend',
                         help='Path to static files')
+    parser.add_argument('--config', type=str, default='../config/products.json',
+                        help='Path to product configuration file')
+    parser.add_argument('--no-opcua', action='store_true',
+                        help='Disable OPC-UA server')
+    parser.add_argument('--opcua-port', type=int, default=4840,
+                        help='OPC-UA server port (default: 4840)')
+    parser.add_argument('--no-modbus', action='store_true',
+                        help='Disable Modbus TCP server')
+    parser.add_argument('--modbus-port', type=int, default=502,
+                        help='Modbus TCP server port (default: 502)')
 
     args = parser.parse_args()
 
@@ -403,6 +643,11 @@ async def main():
         simulation_mode=args.simulate,
         simulation_rate=args.sim_rate,
         static_path=args.static,
+        config_path=args.config,
+        enable_opcua=not args.no_opcua,
+        opcua_port=args.opcua_port,
+        enable_modbus=not args.no_modbus,
+        modbus_port=args.modbus_port,
     )
 
     app = LidarVisualizationApp(config)

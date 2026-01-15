@@ -13,6 +13,7 @@
         vis2d: null,
         vis3d: null,
         histogram: null,
+        measurementUI: null,
         currentView: '2d',
         settings: {
             wsUrl: '',
@@ -41,6 +42,7 @@
         initViewer();
         initVisualizations();
         initHistogram();
+        initMeasurementUI();
 
         // Setup UI event handlers
         setupEventHandlers();
@@ -134,6 +136,7 @@
         state.viewer.on('scan', onScan);
         state.viewer.on('config', onConfig);
         state.viewer.on('error', onError);
+        state.viewer.on('measurement', onMeasurement);
     }
 
     /**
@@ -162,6 +165,20 @@
     function initHistogram() {
         state.histogram = new DistanceHistogram(elements.histogramCanvas, {
             maxRange: parseInt(elements.rangeSlider.value),
+        });
+    }
+
+    /**
+     * Initialize measurement UI
+     */
+    function initMeasurementUI() {
+        state.measurementUI = new MeasurementUI();
+        state.measurementUI.init();
+
+        // Handle zone selection - highlight in visualization
+        state.measurementUI.on('zoneSelected', (zone) => {
+            console.log('Zone selected:', zone);
+            // Could highlight zone in visualization here
         });
     }
 
@@ -339,6 +356,15 @@
         console.error('LIDAR viewer error:', error);
         elements.statusDot.className = 'status-dot connecting';
         elements.statusText.textContent = 'Reconnecting...';
+    }
+
+    /**
+     * Measurement result event handler
+     */
+    function onMeasurement(data) {
+        if (state.measurementUI) {
+            state.measurementUI.updateResults(data);
+        }
     }
 
     /**

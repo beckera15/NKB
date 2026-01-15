@@ -45,6 +45,7 @@ class LidarViewer {
             config: [],
             error: [],
             status: [],
+            measurement: [],
         };
 
         // Layer colors
@@ -194,6 +195,9 @@ class LidarViewer {
                     break;
                 case 'pong':
                     this.stats.latency = Date.now() - message.timestamp * 1000;
+                    break;
+                case 'measurement':
+                    this._emit('measurement', message);
                     break;
             }
 
