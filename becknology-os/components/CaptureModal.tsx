@@ -47,6 +47,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -81,6 +82,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError(null)
 
     try {
       const entry: EntryInsert = {
@@ -102,8 +104,9 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
       setPriority('medium')
       setFile(null)
       onClose()
-    } catch (error) {
-      console.error('Failed to create entry:', error)
+    } catch (err) {
+      console.error('Failed to create entry:', err)
+      setError(err instanceof Error ? err.message : 'Failed to save entry. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -138,7 +141,8 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors ${
+            onClick={() => !file && document.getElementById('file-input')?.click()}
+            className={`relative border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
               isDragging
                 ? 'border-purple-500 bg-purple-500/10'
                 : 'border-gray-700 hover:border-gray-600'
@@ -150,7 +154,10 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
                 <span>{file.name}</span>
                 <button
                   type="button"
-                  onClick={() => setFile(null)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFile(null)
+                  }}
                   className="text-gray-400 hover:text-red-400"
                 >
                   <X size={16} />
@@ -160,14 +167,14 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
               <>
                 <Upload size={32} className="mx-auto text-gray-500 mb-2" />
                 <p className="text-gray-400">Drop files here or click to upload</p>
-                <input
-                  type="file"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  style={{ position: 'relative' }}
-                />
               </>
             )}
+            <input
+              id="file-input"
+              type="file"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
 
           {/* Type Selection */}
@@ -255,6 +262,13 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
               </div>
             </div>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Submit */}
           <div className="flex gap-3 pt-4">
