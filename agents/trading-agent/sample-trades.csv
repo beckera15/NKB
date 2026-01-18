@@ -1,0 +1,9 @@
+time,instrument,direction,entry,exit,size,setup,notes
+2024-01-15 09:32:00,ES,long,4785.25,4792.50,2,breakout,Clean break above overnight high with volume
+2024-01-15 09:58:00,ES,short,4795.00,4788.25,1,failed breakout,Rejected at resistance - quick reversal
+2024-01-15 10:15:00,NQ,long,16850.00,16825.00,1,pullback,Stopped out on false breakout
+2024-01-15 10:45:00,ES,long,4782.00,4791.75,2,support bounce,Strong bounce off VWAP with buyers stepping in
+2024-01-15 11:30:00,NQ,short,16875.00,16895.50,1,range fade,Bad read - trend continuation not reversal
+2024-01-15 13:15:00,ES,long,4788.50,4796.25,3,trend continuation,Added size on pullback to EMA
+2024-01-15 14:00:00,ES,short,4798.00,4798.00,1,reversal,Scratched trade - no follow through
+2024-01-15 14:45:00,NQ,long,16920.00,16955.00,2,breakout,End of day momentum play worked well
