@@ -1,20 +1,20 @@
 # MRS1000 LIDAR Visualization Dependencies
 # For Red Lion Flex Edge Deployment
+#
+# Security audit performed: 2026-01-18
+# - Updated aiohttp for CVE-2024-23334, CVE-2024-27306, CVE-2024-52304, CVE-2025-53643
+# - Removed unused dependencies (uvloop, asyncio-extras)
 
 # Web server and WebSocket support
-aiohttp>=3.9.0
-
-# Async I/O utilities (included with Python 3.11+, but explicit for compatibility)
-asyncio-extras>=1.3.0; python_version < "3.11"
-
-# Optional: For enhanced async support
-uvloop>=0.19.0; sys_platform != "win32"
+# SECURITY: >=3.12.14 required for CVE-2025-53643 (HTTP request smuggling)
+aiohttp>=3.12.14
 
 # OPC-UA server for Ignition integration (optional)
-asyncua>=1.0.0
+# Note: Versions >=0.9.96 fix CVE-2023-26150, CVE-2023-26151, CVE-2022-25304
+asyncua>=1.1.0
 
 # Modbus TCP server for Rockwell PLC integration (optional)
-pymodbus>=3.5.0
+pymodbus>=3.9.0
 
 # Development/testing dependencies (optional)
 # pytest>=7.4.0
