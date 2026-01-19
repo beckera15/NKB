@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 type Goal = Database['public']['Tables']['goals']['Row']
 type GoalInsert = Database['public']['Tables']['goals']['Insert']
@@ -62,8 +63,36 @@ export function useGoals() {
     setGoals(prev => prev.filter(g => g.id !== id))
   }
 
+  // Set up real-time subscription
   useEffect(() => {
     fetchGoals()
+
+    const channel = supabase
+      .channel('goals-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'goals' },
+        (payload: RealtimePostgresChangesPayload<Goal>) => {
+          if (payload.eventType === 'INSERT') {
+            const newGoal = payload.new as Goal
+            setGoals(prev => {
+              if (prev.some(g => g.id === newGoal.id)) return prev
+              return [newGoal, ...prev]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedGoal = payload.new as Goal
+            setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedGoal = payload.old as Goal
+            setGoals(prev => prev.filter(g => g.id !== deletedGoal.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [fetchGoals])
 
   const groupedByTimeframe = {

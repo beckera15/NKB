@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { X, FileText, Image, Video, File, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, FileText, Image, Video, File, ExternalLink, MessageCircle, Lightbulb, CheckSquare, HelpCircle } from 'lucide-react'
 import type { Database } from '@/types/database'
 
 type Entry = Database['public']['Tables']['entries']['Row']
@@ -13,13 +13,27 @@ interface EntriesViewProps {
 }
 
 const STATUSES = ['inbox', 'action', 'reference', 'archive', 'completed']
-const TYPES = ['note', 'task', 'decision', 'idea', 'reference', 'media']
+const TYPES = ['thought', 'idea', 'decision', 'task', 'note', 'media']
 const PRIORITIES = ['low', 'medium', 'high', 'critical']
 
 export function EntriesView({ entries, selectedProject, onUpdateEntry }: EntriesViewProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
+
+  // Sync selected entry with real-time updates
+  useEffect(() => {
+    if (selectedEntry) {
+      const updated = entries.find(e => e.id === selectedEntry.id)
+      if (updated && JSON.stringify(updated) !== JSON.stringify(selectedEntry)) {
+        setSelectedEntry(updated)
+      } else if (!updated) {
+        // Entry was deleted
+        setSelectedEntry(null)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entries])
 
   const filteredEntries = entries.filter(entry => {
     if (selectedProject && entry.project !== selectedProject) return false
@@ -30,6 +44,10 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
 
   const getTypeIcon = (type: string | null) => {
     switch (type) {
+      case 'thought': return MessageCircle
+      case 'idea': return Lightbulb
+      case 'decision': return HelpCircle
+      case 'task': return CheckSquare
       case 'media': return Image
       case 'video': return Video
       default: return FileText

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { X, Upload, FileText, Lightbulb, CheckSquare, HelpCircle, Image } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { X, Upload, FileText, Lightbulb, CheckSquare, HelpCircle, Image as ImageIcon, MessageCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 
 type EntryInsert = Database['public']['Tables']['entries']['Insert']
@@ -10,14 +11,15 @@ interface CaptureModalProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (entry: EntryInsert) => Promise<void>
+  initialFile?: File | null
 }
 
 const TYPES = [
-  { id: 'note', label: 'Note', icon: FileText },
+  { id: 'thought', label: 'Thought', icon: MessageCircle },
   { id: 'idea', label: 'Idea', icon: Lightbulb },
-  { id: 'task', label: 'Task', icon: CheckSquare },
   { id: 'decision', label: 'Decision', icon: HelpCircle },
-  { id: 'media', label: 'Media', icon: Image },
+  { id: 'task', label: 'Task', icon: CheckSquare },
+  { id: 'note', label: 'Note', icon: FileText },
 ]
 
 const PROJECTS = [
@@ -38,8 +40,8 @@ const PRIORITIES = [
   { id: 'critical', label: 'Critical', color: 'red' },
 ]
 
-export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
-  const [type, setType] = useState('note')
+export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: CaptureModalProps) {
+  const [type, setType] = useState('thought')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [project, setProject] = useState('')
@@ -47,6 +49,16 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null)
+
+  // Handle initial file from global drag-drop
+  useEffect(() => {
+    if (initialFile && isOpen) {
+      setFile(initialFile)
+      setType('media')
+      if (!title) setTitle(initialFile.name)
+    }
+  }, [initialFile, isOpen, title])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -78,29 +90,77 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
     }
   }
 
+  const getFileType = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'image'
+    if (mimeType.startsWith('video/')) return 'video'
+    if (mimeType.startsWith('audio/')) return 'audio'
+    if (mimeType.includes('pdf')) return 'document'
+    if (mimeType.includes('document') || mimeType.includes('sheet') || mimeType.includes('presentation')) return 'document'
+    return 'other'
+  }
+
+  const uploadFile = async (file: File): Promise<{ url: string; fileType: string } | null> => {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+    const filePath = `uploads/${fileName}`
+
+    setUploadProgress('Uploading...')
+
+    const { error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(filePath, file)
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError)
+      setUploadProgress('Upload failed')
+      return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('files')
+      .getPublicUrl(filePath)
+
+    setUploadProgress(null)
+    return { url: publicUrl, fileType: getFileType(file.type) }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
+      let fileUrl: string | null = null
+      let fileType: string | null = null
+
+      if (file) {
+        const uploadResult = await uploadFile(file)
+        if (uploadResult) {
+          fileUrl = uploadResult.url
+          fileType = uploadResult.fileType
+        }
+      }
+
       const entry: EntryInsert = {
-        type,
+        type: file ? 'media' : type,
         title: title || 'Untitled',
         content,
         project: project || null,
         priority,
         status: 'inbox',
+        file_url: fileUrl,
+        file_type: fileType,
       }
 
       await onSubmit(entry)
 
       // Reset form
-      setType('note')
+      setType('thought')
       setTitle('')
       setContent('')
       setProject('')
       setPriority('medium')
       setFile(null)
+      setUploadProgress(null)
       onClose()
     } catch (error) {
       console.error('Failed to create entry:', error)
@@ -146,7 +206,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
           >
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <Image size={24} className="text-purple-400" />
+                <ImageIcon size={24} className="text-purple-400" />
                 <span>{file.name}</span>
                 <button
                   type="button"
@@ -270,7 +330,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit }: CaptureModalProps) {
               disabled={isSubmitting}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition-all disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : 'Save Entry'}
+              {isSubmitting ? (uploadProgress || 'Saving...') : 'Save Entry'}
             </button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { IntelligenceView } from '@/components/IntelligenceView'
 import { EntriesView } from '@/components/EntriesView'
@@ -17,10 +17,46 @@ export default function Dashboard() {
   const [currentView, setCurrentView] = useState<View>('intelligence')
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [showCaptureModal, setShowCaptureModal] = useState(false)
+  const [isDraggingFile, setIsDraggingFile] = useState(false)
+  const [droppedFile, setDroppedFile] = useState<File | null>(null)
 
   const { entries, stats, createEntry, updateEntry, loading: entriesLoading } = useEntries()
-  const { goals, groupedByTimeframe, updateGoal, loading: goalsLoading } = useGoals()
+  const { goals, groupedByTimeframe, createGoal, updateGoal, loading: goalsLoading } = useGoals()
   const { insights, loading: insightsLoading } = useInsights()
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDraggingFile(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only set to false if we're leaving the main container
+    if (e.currentTarget === e.target) {
+      setIsDraggingFile(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingFile(false)
+
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      setDroppedFile(file)
+      setShowCaptureModal(true)
+    }
+  }, [])
+
+  const handleModalClose = useCallback(() => {
+    setShowCaptureModal(false)
+    setDroppedFile(null)
+  }, [])
 
   const isLoading = entriesLoading || goalsLoading || insightsLoading
 
@@ -56,6 +92,7 @@ export default function Dashboard() {
             groupedByTimeframe={groupedByTimeframe}
             selectedProject={selectedProject}
             onUpdateGoal={updateGoal}
+            onCreateGoal={createGoal}
           />
         )
       default:
@@ -64,7 +101,22 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-950 text-white">
+    <div
+      className="flex h-screen bg-gray-950 text-white relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Global drop overlay */}
+      {isDraggingFile && (
+        <div className="absolute inset-0 z-50 bg-purple-600/20 border-4 border-dashed border-purple-500 flex items-center justify-center pointer-events-none">
+          <div className="bg-gray-900/90 px-8 py-6 rounded-2xl text-center">
+            <p className="text-2xl font-semibold text-purple-400">Drop file to upload</p>
+            <p className="text-gray-400 mt-2">Release to open capture modal</p>
+          </div>
+        </div>
+      )}
+
       <Sidebar
         currentView={currentView}
         onViewChange={setCurrentView}
@@ -89,8 +141,9 @@ export default function Dashboard() {
 
       <CaptureModal
         isOpen={showCaptureModal}
-        onClose={() => setShowCaptureModal(false)}
+        onClose={handleModalClose}
         onSubmit={createEntry}
+        initialFile={droppedFile}
       />
     </div>
   )

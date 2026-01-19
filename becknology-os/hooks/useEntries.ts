@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 type Entry = Database['public']['Tables']['entries']['Row']
 type EntryInsert = Database['public']['Tables']['entries']['Insert']
@@ -35,6 +36,7 @@ export function useEntries() {
       .single()
 
     if (error) throw error
+    // Real-time will handle the update, but we also update locally for immediate feedback
     setEntries(prev => [data, ...prev])
     return data
   }
@@ -62,8 +64,37 @@ export function useEntries() {
     setEntries(prev => prev.filter(e => e.id !== id))
   }
 
+  // Set up real-time subscription
   useEffect(() => {
     fetchEntries()
+
+    const channel = supabase
+      .channel('entries-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'entries' },
+        (payload: RealtimePostgresChangesPayload<Entry>) => {
+          if (payload.eventType === 'INSERT') {
+            const newEntry = payload.new as Entry
+            setEntries(prev => {
+              // Avoid duplicates if we already added it optimistically
+              if (prev.some(e => e.id === newEntry.id)) return prev
+              return [newEntry, ...prev]
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedEntry = payload.new as Entry
+            setEntries(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e))
+          } else if (payload.eventType === 'DELETE') {
+            const deletedEntry = payload.old as Entry
+            setEntries(prev => prev.filter(e => e.id !== deletedEntry.id))
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [fetchEntries])
 
   const stats = {
