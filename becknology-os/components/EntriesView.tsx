@@ -1,25 +1,58 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, FileText, Image, Video, File, ExternalLink, MessageCircle, Lightbulb, CheckSquare, HelpCircle } from 'lucide-react'
+import {
+  X,
+  FileText,
+  Image,
+  Video,
+  File,
+  ExternalLink,
+  MessageCircle,
+  Lightbulb,
+  CheckSquare,
+  HelpCircle,
+  Link as LinkIcon,
+  Camera,
+  Search,
+  Mic,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react'
 import type { Database } from '@/types/database'
+import { ENTRY_TYPES } from '@/lib/constants'
 
 type Entry = Database['public']['Tables']['entries']['Row']
 
 interface EntriesViewProps {
   entries: Entry[]
   selectedProject: string | null
-  onUpdateEntry: (id: string, updates: Partial<Entry>) => Promise<void>
+  onUpdateEntry: (id: string, updates: Partial<Entry>) => Promise<Entry | void>
 }
 
 const STATUSES = ['inbox', 'action', 'reference', 'archive', 'completed']
-const TYPES = ['thought', 'idea', 'decision', 'task', 'note', 'media']
+const TYPES = ENTRY_TYPES.map(t => t.id)
 const PRIORITIES = ['low', 'medium', 'high', 'critical']
+
+const TYPE_ICONS: Record<string, React.ComponentType<{ size?: number | string; className?: string }>> = {
+  thought: MessageCircle,
+  idea: Lightbulb,
+  decision: HelpCircle,
+  task: CheckSquare,
+  note: FileText,
+  media: Image,
+  screenshot: Camera,
+  link: LinkIcon,
+  research: Search,
+  voice_memo: Mic,
+  video: Video,
+}
 
 export function EntriesView({ entries, selectedProject, onUpdateEntry }: EntriesViewProps) {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [selectedEntry, setSelectedEntry] = useState<Entry | null>(null)
+  const [isOcrExpanded, setIsOcrExpanded] = useState(false)
 
   // Sync selected entry with real-time updates
   useEffect(() => {
@@ -43,15 +76,12 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
   })
 
   const getTypeIcon = (type: string | null) => {
-    switch (type) {
-      case 'thought': return MessageCircle
-      case 'idea': return Lightbulb
-      case 'decision': return HelpCircle
-      case 'task': return CheckSquare
-      case 'media': return Image
-      case 'video': return Video
-      default: return FileText
-    }
+    return TYPE_ICONS[type || 'note'] || FileText
+  }
+
+  const getTypeLabel = (type: string | null) => {
+    const entryType = ENTRY_TYPES.find(t => t.id === type)
+    return entryType?.label || 'Note'
   }
 
   return (
@@ -78,7 +108,7 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
           >
             <option value="all">All Types</option>
             {TYPES.map(t => (
-              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+              <option key={t} value={t}>{getTypeLabel(t)}</option>
             ))}
           </select>
 
@@ -121,6 +151,18 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
                           }`}>
                             {entry.priority}
                           </span>
+                          {entry.type === 'link' && entry.source_url && (
+                            <span className="text-xs text-purple-400">
+                              <LinkIcon size={12} className="inline mr-1" />
+                              link
+                            </span>
+                          )}
+                          {entry.ocr_text && (
+                            <span className="text-xs text-purple-400">
+                              <Camera size={12} className="inline mr-1" />
+                              OCR
+                            </span>
+                          )}
                           <span className="text-xs text-gray-500">{entry.project}</span>
                           <span className="text-xs text-gray-600">
                             {new Date(entry.created_at).toLocaleDateString()}
@@ -162,6 +204,46 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
               </p>
             </div>
 
+            {/* Source URL */}
+            {selectedEntry.source_url && (
+              <div>
+                <label className="text-xs text-gray-500 uppercase">Source URL</label>
+                <a
+                  href={selectedEntry.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 flex items-center gap-2 text-purple-400 hover:text-purple-300 break-all"
+                >
+                  <LinkIcon size={14} className="shrink-0" />
+                  <span className="text-sm truncate">{selectedEntry.source_url}</span>
+                  <ExternalLink size={12} className="shrink-0" />
+                </a>
+              </div>
+            )}
+
+            {/* OCR Text (collapsible) */}
+            {selectedEntry.ocr_text && (
+              <div>
+                <button
+                  onClick={() => setIsOcrExpanded(!isOcrExpanded)}
+                  className="w-full flex items-center justify-between text-xs text-gray-500 uppercase hover:text-gray-400"
+                >
+                  <span className="flex items-center gap-1">
+                    <Camera size={12} />
+                    Extracted Text (OCR)
+                  </span>
+                  {isOcrExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+                {isOcrExpanded && (
+                  <div className="mt-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+                    <p className="text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                      {selectedEntry.ocr_text}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-gray-500 uppercase">Status</label>
@@ -197,7 +279,7 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
 
             <div>
               <label className="text-xs text-gray-500 uppercase">Type</label>
-              <p className="mt-1">{selectedEntry.type || 'Note'}</p>
+              <p className="mt-1">{getTypeLabel(selectedEntry.type)}</p>
             </div>
 
             {selectedEntry.keywords && selectedEntry.keywords.length > 0 && (

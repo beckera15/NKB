@@ -17,8 +17,8 @@ interface GoalsViewProps {
     yearly: Goal[]
   }
   selectedProject: string | null
-  onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<void>
-  onCreateGoal: (goal: GoalInsert) => Promise<Goal>
+  onUpdateGoal: (id: string, updates: Partial<Goal>) => Promise<Goal | void>
+  onCreateGoal: (goal: GoalInsert) => Promise<Goal | void>
 }
 
 const TIMEFRAMES = [
@@ -132,7 +132,7 @@ function GoalCard({
   onUpdate
 }: {
   goal: Goal
-  onUpdate: (id: string, updates: Partial<Goal>) => Promise<void>
+  onUpdate: (id: string, updates: Partial<Goal>) => Promise<Goal | void>
 }) {
   const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newProgress = parseInt(e.target.value)
@@ -208,7 +208,7 @@ function AddGoalModal({
   onSubmit
 }: {
   onClose: () => void
-  onSubmit: (goal: GoalInsert) => Promise<Goal>
+  onSubmit: (goal: GoalInsert) => Promise<Goal | void>
 }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')

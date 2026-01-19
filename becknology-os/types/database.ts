@@ -13,6 +13,8 @@ export type Database = {
           file_url: string | null
           file_type: string | null
           keywords: string[] | null
+          source_url: string | null
+          ocr_text: string | null
           created_at: string
           updated_at: string
         }
@@ -27,6 +29,8 @@ export type Database = {
           file_url?: string | null
           file_type?: string | null
           keywords?: string[] | null
+          source_url?: string | null
+          ocr_text?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -41,6 +45,8 @@ export type Database = {
           file_url?: string | null
           file_type?: string | null
           keywords?: string[] | null
+          source_url?: string | null
+          ocr_text?: string | null
           created_at?: string
           updated_at?: string
         }
