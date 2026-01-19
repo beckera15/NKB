@@ -9,7 +9,8 @@ import {
   Zap,
   AlertCircle,
   CheckSquare,
-  Plus
+  Plus,
+  LogOut
 } from 'lucide-react'
 
 type View = 'intelligence' | 'entries' | 'library' | 'goals'
@@ -28,6 +29,7 @@ interface SidebarProps {
   onProjectChange: (project: string | null) => void
   stats: Stats
   onCapture: () => void
+  onLogout: () => void
 }
 
 const PROJECTS = [
@@ -54,7 +56,8 @@ export function Sidebar({
   selectedProject,
   onProjectChange,
   stats,
-  onCapture
+  onCapture,
+  onLogout
 }: SidebarProps) {
   return (
     <aside className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col h-screen">
@@ -135,6 +138,17 @@ export function Sidebar({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-gray-800">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-all"
+        >
+          <LogOut size={18} />
+          Sign Out
+        </button>
       </div>
     </aside>
   )
