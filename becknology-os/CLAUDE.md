@@ -19,16 +19,18 @@ This is a **Next.js 14 App Router** application with Supabase backend for a pers
 - Next.js 14 (App Router, not Pages Router)
 - TypeScript with strict mode
 - Tailwind CSS for styling
-- Supabase for database
+- Supabase for database and authentication
 - Lucide React for icons
 
 ### Directory Structure
 ```
 app/              # App Router pages and layouts
   layout.tsx      # Root layout with metadata
-  page.tsx        # Main dashboard (orchestrates all views)
+  page.tsx        # Main dashboard (orchestrates all views, protected by AuthGuard)
+  login/page.tsx  # Authentication page (sign in/sign up)
   globals.css     # Global styles and Tailwind utilities
 components/       # React components
+  AuthGuard.tsx   # Route protection wrapper (redirects to /login if unauthenticated)
   Sidebar.tsx     # Navigation + stats + project selector
   CaptureModal.tsx    # Quick entry creation with file upload
   IntelligenceView.tsx # Dashboard with insights and project activity
@@ -36,6 +38,7 @@ components/       # React components
   LibraryView.tsx     # Media file grid with preview
   GoalsView.tsx       # Goals organized by timeframe
 hooks/            # Custom React hooks (data layer)
+  useAuth.ts      # Authentication state + signIn/signUp/signOut
   useEntries.ts   # Entries CRUD + stats computation
   useGoals.ts     # Goals CRUD + timeframe grouping
   useInsights.ts  # Insights fetching
@@ -56,6 +59,12 @@ types/
 - Custom hooks abstract Supabase queries with loading/error states
 - Path alias: `@/*` maps to project root
 - 8 predefined projects: TCAS, Trading, Becknology, NKB PR, Nikki GF Content, Property/Home, Family, Wealth Building
+
+### Authentication
+- Routes are protected by wrapping page content with `<AuthGuard>` component
+- `useAuth` hook provides auth state and methods (signIn, signUp, signOut, isAuthenticated)
+- Unauthenticated users are redirected to `/login`
+- Login page redirects authenticated users to `/`
 
 ### Styling
 - Dark theme with purple/pink gradient accents
