@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, FileText, Image, Video, File, ExternalLink, MessageCircle, Lightbulb, CheckSquare, HelpCircle } from 'lucide-react'
+import { X, FileText, Image, Video, File, ExternalLink, MessageCircle, Lightbulb, CheckSquare, HelpCircle, Camera, Link2, Search, Mic } from 'lucide-react'
 import type { Database } from '@/types/database'
 
 type Entry = Database['public']['Tables']['entries']['Row']
@@ -13,7 +13,7 @@ interface EntriesViewProps {
 }
 
 const STATUSES = ['inbox', 'action', 'reference', 'archive', 'completed']
-const TYPES = ['thought', 'idea', 'decision', 'task', 'note', 'media']
+const TYPES = ['thought', 'idea', 'decision', 'task', 'note', 'screenshot', 'link', 'research', 'voice_memo', 'media']
 const PRIORITIES = ['low', 'medium', 'high', 'critical']
 
 export function EntriesView({ entries, selectedProject, onUpdateEntry }: EntriesViewProps) {
@@ -48,6 +48,10 @@ export function EntriesView({ entries, selectedProject, onUpdateEntry }: Entries
       case 'idea': return Lightbulb
       case 'decision': return HelpCircle
       case 'task': return CheckSquare
+      case 'screenshot': return Camera
+      case 'link': return Link2
+      case 'research': return Search
+      case 'voice_memo': return Mic
       case 'media': return Image
       case 'video': return Video
       default: return FileText
