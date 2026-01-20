@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 
-type Insight = Database['public']['Tables']['insights']['Row']
-type InsightInsert = Database['public']['Tables']['insights']['Insert']
+export type Insight = Database['public']['Tables']['insights']['Row']
+export type InsightInsert = Database['public']['Tables']['insights']['Insert']
 
 export function useInsights() {
   const [insights, setInsights] = useState<Insight[]>([])

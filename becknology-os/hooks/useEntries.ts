@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
-type Entry = Database['public']['Tables']['entries']['Row']
-type EntryInsert = Database['public']['Tables']['entries']['Insert']
+export type Entry = Database['public']['Tables']['entries']['Row']
+export type EntryInsert = Database['public']['Tables']['entries']['Insert']
 
 export function useEntries() {
   const [entries, setEntries] = useState<Entry[]>([])

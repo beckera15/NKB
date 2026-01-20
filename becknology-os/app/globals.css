@@ -99,9 +99,160 @@ body {
   box-shadow: 0 0 20px rgba(236, 72, 153, 0.3);
 }
 
-/* Glass effect */
+/* Glass effect - Enhanced */
 .glass {
-  background: rgba(17, 24, 39, 0.8);
-  backdrop-filter: blur(12px);
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(75, 85, 99, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* Glass effect for cards - subtle */
+.glass-subtle {
+  background: rgba(17, 24, 39, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(75, 85, 99, 0.2);
+}
+
+/* Card hover lift effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Pulse animation for live indicators */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 8px currentColor;
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 16px currentColor;
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Status dot animation */
+@keyframes status-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+}
+
+.status-pulse {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+/* Shimmer loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg,
+    rgba(75, 85, 99, 0.1) 0%,
+    rgba(75, 85, 99, 0.3) 50%,
+    rgba(75, 85, 99, 0.1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Gradient border glow on hover */
+.gradient-glow-hover {
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+.gradient-glow-hover:hover {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2), 0 0 40px rgba(236, 72, 153, 0.1);
+}
+
+/* War Room terminal text effect */
+.terminal-text {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Neon glow text */
+.neon-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 40px currentColor;
+}
+
+/* Soft inner shadow for depth */
+.inner-shadow {
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Agent card specific styling */
+.agent-card {
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.8) 0%, rgba(17, 24, 39, 0.9) 100%);
   border: 1px solid rgba(75, 85, 99, 0.3);
+  transition: all 0.2s ease;
+}
+
+.agent-card:hover {
+  border-color: rgba(168, 85, 247, 0.4);
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 1) 100%);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(168, 85, 247, 0.1);
+}
+
+/* Progress bar animation */
+@keyframes progress-shine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: progress-shine 2s ease infinite;
+}
+
+/* Subtle background pattern */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(75, 85, 99, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(75, 85, 99, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Bloomberg-style stat highlight */
+.stat-highlight {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, transparent 100%);
+  border-left: 3px solid #22c55e;
+}
+
+.stat-highlight-negative {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+  border-left: 3px solid #ef4444;
 }

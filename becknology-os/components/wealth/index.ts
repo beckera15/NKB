@@ -1,0 +1,1 @@
+export { WealthView } from './WealthView'

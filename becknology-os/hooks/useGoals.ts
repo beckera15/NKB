@@ -5,8 +5,8 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
-type Goal = Database['public']['Tables']['goals']['Row']
-type GoalInsert = Database['public']['Tables']['goals']['Insert']
+export type Goal = Database['public']['Tables']['goals']['Row']
+export type GoalInsert = Database['public']['Tables']['goals']['Insert']
 
 export function useGoals() {
   const [goals, setGoals] = useState<Goal[]>([])
