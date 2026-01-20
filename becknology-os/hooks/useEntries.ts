@@ -29,7 +29,9 @@ export function useEntries() {
   }, [])
 
   const createEntry = async (entry: EntryInsert) => {
-    const { data, error } = await supabase
+    // Use type assertion to handle extended fields that may not be in DB yet
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('entries')
       .insert(entry)
       .select()
@@ -37,12 +39,13 @@ export function useEntries() {
 
     if (error) throw error
     // Real-time will handle the update, but we also update locally for immediate feedback
-    setEntries(prev => [data, ...prev])
-    return data
+    setEntries(prev => [data as Entry, ...prev])
+    return data as Entry
   }
 
   const updateEntry = async (id: string, updates: Partial<Entry>) => {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('entries')
       .update(updates)
       .eq('id', id)
@@ -50,8 +53,8 @@ export function useEntries() {
       .single()
 
     if (error) throw error
-    setEntries(prev => prev.map(e => e.id === id ? data : e))
-    return data
+    setEntries(prev => prev.map(e => e.id === id ? data as Entry : e))
+    return data as Entry
   }
 
   const deleteEntry = async (id: string) => {

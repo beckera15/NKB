@@ -1,42 +1,49 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { X, Upload, FileText, Lightbulb, CheckSquare, HelpCircle, Image as ImageIcon, MessageCircle, Link2, Camera, Search, Mic, Loader2, Sparkles } from 'lucide-react'
+import {
+  X,
+  Upload,
+  FileText,
+  Lightbulb,
+  CheckSquare,
+  HelpCircle,
+  Image as ImageIcon,
+  MessageCircle,
+  Link as LinkIcon,
+  Camera,
+  Search,
+  Mic,
+  Loader2,
+  Sparkles
+} from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { autoTag, isURL, type AutoTagResult } from '@/lib/autoTag'
 import type { Database } from '@/types/database'
+import { ENTRY_TYPES, PROJECTS, type EntryType } from '@/lib/constants'
+import { useOCR } from '@/hooks/useOCR'
 
 type EntryInsert = Database['public']['Tables']['entries']['Insert']
 
 interface CaptureModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (entry: EntryInsert) => Promise<void>
+  onSubmit: (entry: EntryInsert) => Promise<unknown>
   initialFile?: File | null
 }
 
-const TYPES = [
-  { id: 'thought', label: 'Thought', icon: MessageCircle },
-  { id: 'idea', label: 'Idea', icon: Lightbulb },
-  { id: 'decision', label: 'Decision', icon: HelpCircle },
-  { id: 'task', label: 'Task', icon: CheckSquare },
-  { id: 'note', label: 'Note', icon: FileText },
-  { id: 'screenshot', label: 'Screenshot', icon: Camera },
-  { id: 'link', label: 'Link', icon: Link2 },
-  { id: 'research', label: 'Research', icon: Search },
-  { id: 'voice_memo', label: 'Voice', icon: Mic },
-]
-
-const PROJECTS = [
-  'TCAS',
-  'Trading',
-  'Becknology',
-  'NKB PR',
-  'Nikki GF Content',
-  'Property/Home',
-  'Family',
-  'Wealth Building',
-]
+const TYPE_ICONS: Record<string, React.ComponentType<{ size?: number | string }>> = {
+  thought: MessageCircle,
+  idea: Lightbulb,
+  decision: HelpCircle,
+  task: CheckSquare,
+  note: FileText,
+  media: ImageIcon,
+  screenshot: Camera,
+  link: LinkIcon,
+  research: Search,
+  voice_memo: Mic,
+}
 
 const PRIORITIES = [
   { id: 'low', label: 'Low', color: 'gray' },
@@ -46,7 +53,7 @@ const PRIORITIES = [
 ]
 
 export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: CaptureModalProps) {
-  const [type, setType] = useState('thought')
+  const [type, setType] = useState<EntryType>('thought')
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [project, setProject] = useState('')
@@ -56,45 +63,42 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
   const [file, setFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string | null>(null)
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null)
+  const [sourceUrl, setSourceUrl] = useState<string>('')
+  const [ocrText, setOcrText] = useState('')
   const [autoTagResult, setAutoTagResult] = useState<AutoTagResult | null>(null)
   const [showAutoTagSuggestion, setShowAutoTagSuggestion] = useState(false)
+  const [isExtractingLink, setIsExtractingLink] = useState(false)
+
+  // OCR hook
+  const { extractText, progress: ocrProgress, isProcessing: isOcrProcessing } = useOCR()
 
   // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setType('thought')
-      setTitle('')
-      setContent('')
-      setProject('')
-      setPriority('medium')
-      setKeywords([])
-      setFile(null)
-      setProcessingStatus(null)
-      setSourceUrl(null)
-      setAutoTagResult(null)
-      setShowAutoTagSuggestion(false)
+      resetForm()
     }
   }, [isOpen])
 
   // Handle initial file from global drag-drop
   useEffect(() => {
     if (initialFile && isOpen) {
-      handleFile(initialFile)
+      setFile(initialFile)
+      handleFileSelected(initialFile)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialFile, isOpen])
 
   // Auto-tag when content changes
   useEffect(() => {
-    if (content.length > 20 || title.length > 10) {
-      const result = autoTag(content, title)
+    const text = [title, content, ocrText].filter(Boolean).join(' ')
+    if (text.length > 20) {
+      const result = autoTag(text, title)
       setAutoTagResult(result)
       if (result.suggestedProject && !project && result.confidence > 0.3) {
         setShowAutoTagSuggestion(true)
       }
     }
-  }, [content, title, project])
+  }, [title, content, ocrText, project])
 
   // Detect URL in content
   useEffect(() => {
@@ -103,68 +107,34 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
       handleURLExtraction(trimmedContent)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [content, sourceUrl, file])
+  }, [content])
 
-  const handleFile = async (selectedFile: File) => {
-    setFile(selectedFile)
+  const handleFileSelected = async (selectedFile: File) => {
+    if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''))
 
-    // Check if it's an image for OCR
+    // Determine type based on file
     if (selectedFile.type.startsWith('image/')) {
       setType('screenshot')
-      if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''))
-      await performOCR(selectedFile)
+      // Run OCR on images
+      try {
+        setProcessingStatus('Extracting text from image...')
+        const text = await extractText(selectedFile)
+        if (text) {
+          setOcrText(text)
+          setProcessingStatus('Text extracted successfully!')
+        } else {
+          setProcessingStatus('No text found in image')
+        }
+        setTimeout(() => setProcessingStatus(null), 2000)
+      } catch (err) {
+        console.error('OCR failed:', err)
+        setProcessingStatus('OCR failed - image will be saved without text extraction')
+        setTimeout(() => setProcessingStatus(null), 3000)
+      }
     } else if (selectedFile.type.startsWith('audio/')) {
       setType('voice_memo')
-      if (!title) setTitle(selectedFile.name.replace(/\.[^/.]+$/, ''))
     } else {
-      setType('note')
-      if (!title) setTitle(selectedFile.name)
-    }
-  }
-
-  const performOCR = async (imageFile: File) => {
-    setProcessingStatus('Extracting text from image...')
-
-    try {
-      // Dynamic import of Tesseract.js
-      const Tesseract = await import('tesseract.js')
-
-      const result = await Tesseract.recognize(
-        imageFile,
-        'eng',
-        {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              setProcessingStatus(`OCR: ${Math.round(m.progress * 100)}%`)
-            }
-          }
-        }
-      )
-
-      const extractedText = result.data.text.trim()
-
-      if (extractedText) {
-        setContent(prev => prev ? `${prev}\n\n--- Extracted Text ---\n${extractedText}` : extractedText)
-        setProcessingStatus('Text extracted successfully!')
-
-        // Auto-tag the extracted content
-        const tagResult = autoTag(extractedText, title)
-        setAutoTagResult(tagResult)
-        if (tagResult.keywords.length > 0) {
-          setKeywords(tagResult.keywords)
-        }
-        if (tagResult.suggestedProject && !project) {
-          setShowAutoTagSuggestion(true)
-        }
-      } else {
-        setProcessingStatus('No text found in image')
-      }
-
-      setTimeout(() => setProcessingStatus(null), 3000)
-    } catch (error) {
-      console.error('OCR error:', error)
-      setProcessingStatus('OCR failed - image will be saved without text extraction')
-      setTimeout(() => setProcessingStatus(null), 3000)
+      setType('media')
     }
   }
 
@@ -175,6 +145,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
       normalizedUrl = 'https://' + normalizedUrl
     }
 
+    setIsExtractingLink(true)
     setProcessingStatus('Extracting content from URL...')
     setSourceUrl(normalizedUrl)
     setType('link')
@@ -192,17 +163,9 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
 
       const data = await response.json()
 
-      setTitle(data.title || normalizedUrl)
-      setContent(data.description ? `${data.description}\n\n${data.content}` : data.content)
-
-      // Auto-tag the extracted content
-      const tagResult = autoTag(data.content, data.title)
-      setAutoTagResult(tagResult)
-      if (tagResult.keywords.length > 0) {
-        setKeywords(tagResult.keywords)
-      }
-      if (tagResult.suggestedProject && !project) {
-        setShowAutoTagSuggestion(true)
+      if (data.title && !title) setTitle(data.title)
+      if (data.description) {
+        setContent(data.description + (data.content ? '\n\n' + data.content.slice(0, 500) : ''))
       }
 
       setProcessingStatus('Content extracted!')
@@ -210,8 +173,10 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
     } catch (error) {
       console.error('URL extraction error:', error)
       setProcessingStatus('Could not extract content - URL will be saved')
-      setTitle(normalizedUrl)
+      if (!title) setTitle(normalizedUrl)
       setTimeout(() => setProcessingStatus(null), 3000)
+    } finally {
+      setIsExtractingLink(false)
     }
   }
 
@@ -230,7 +195,8 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
     setIsDragging(false)
     const droppedFile = e.dataTransfer.files[0]
     if (droppedFile) {
-      handleFile(droppedFile)
+      setFile(droppedFile)
+      handleFileSelected(droppedFile)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -238,7 +204,19 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
-      handleFile(selectedFile)
+      setFile(selectedFile)
+      handleFileSelected(selectedFile)
+    }
+  }
+
+  // Handle URL paste detection in title field
+  const handleUrlPaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text')
+
+    // Check if it's a URL
+    if (isURL(pastedText) && !sourceUrl && !file) {
+      e.preventDefault()
+      await handleURLExtraction(pastedText)
     }
   }
 
@@ -251,8 +229,8 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
     return 'other'
   }
 
-  const uploadFile = async (file: File): Promise<{ url: string; fileType: string } | null> => {
-    const fileExt = file.name.split('.').pop()
+  const uploadFile = async (fileToUpload: File): Promise<{ url: string; fileType: string } | null> => {
+    const fileExt = fileToUpload.name.split('.').pop()
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
     const filePath = `uploads/${fileName}`
 
@@ -260,7 +238,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
 
     const { error: uploadError } = await supabase.storage
       .from('files')
-      .upload(filePath, file)
+      .upload(filePath, fileToUpload)
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
@@ -272,7 +250,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
       .from('files')
       .getPublicUrl(filePath)
 
-    return { url: publicUrl, fileType: getFileType(file.type) }
+    return { url: publicUrl, fileType: getFileType(fileToUpload.type) }
   }
 
   const acceptAutoTagSuggestion = () => {
@@ -283,6 +261,22 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
       setKeywords(autoTagResult.keywords)
     }
     setShowAutoTagSuggestion(false)
+  }
+
+  const resetForm = () => {
+    setType('thought')
+    setTitle('')
+    setContent('')
+    setProject('')
+    setPriority('medium')
+    setKeywords([])
+    setFile(null)
+    setProcessingStatus(null)
+    setSourceUrl('')
+    setOcrText('')
+    setAutoTagResult(null)
+    setShowAutoTagSuggestion(false)
+    setIsExtractingLink(false)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -301,35 +295,22 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
         }
       }
 
-      // Determine final type
-      let finalType = type
-      if (file && file.type.startsWith('image/')) {
-        finalType = 'screenshot'
-      } else if (file && file.type.startsWith('audio/')) {
-        finalType = 'voice_memo'
-      } else if (sourceUrl) {
-        finalType = 'link'
-      }
-
-      // Build content with source URL if applicable
-      let finalContent = content
-      if (sourceUrl && !content.includes(sourceUrl)) {
-        finalContent = `Source: ${sourceUrl}\n\n${content}`
-      }
-
       const entry: EntryInsert = {
-        type: finalType,
+        type,
         title: title || 'Untitled',
-        content: finalContent,
+        content: content || null,
         project: project || null,
         priority,
         status: 'inbox',
         file_url: fileUrl,
         file_type: fileType,
-        keywords: keywords.length > 0 ? keywords : null,
+        keywords: keywords.length > 0 ? keywords : (autoTagResult?.keywords || null),
+        source_url: sourceUrl || null,
+        ocr_text: ocrText || null,
       }
 
       await onSubmit(entry)
+      resetForm()
       onClose()
     } catch (error) {
       console.error('Failed to create entry:', error)
@@ -404,12 +385,31 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
             </div>
           )}
 
+          {/* URL Input */}
+          <div>
+            <label className="text-xs text-gray-500 uppercase mb-2 block">Link URL</label>
+            <div className="relative">
+              <input
+                type="text"
+                value={sourceUrl}
+                onChange={(e) => setSourceUrl(e.target.value)}
+                onPaste={handleUrlPaste}
+                placeholder="Paste a URL to extract content..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
+              />
+              <LinkIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              {isExtractingLink && (
+                <Loader2 size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 animate-spin" />
+              )}
+            </div>
+          </div>
+
           {/* Drop Zone */}
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors relative ${
               isDragging
                 ? 'border-purple-500 bg-purple-500/10'
                 : 'border-gray-700 hover:border-gray-600'
@@ -425,10 +425,14 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
                   <ImageIcon size={24} className="text-purple-400" />
                 )}
                 <span className="truncate max-w-[300px]">{file.name}</span>
+                {isOcrProcessing && (
+                  <span className="text-sm text-purple-400">OCR: {ocrProgress}%</span>
+                )}
                 <button
                   type="button"
                   onClick={() => {
                     setFile(null)
+                    setOcrText('')
                     setType('thought')
                   }}
                   className="text-gray-400 hover:text-red-400"
@@ -450,25 +454,41 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
             )}
           </div>
 
+          {/* OCR Text Display */}
+          {ocrText && (
+            <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera size={14} className="text-purple-400" />
+                <span className="text-xs text-gray-400 uppercase">Extracted Text (OCR)</span>
+              </div>
+              <p className="text-sm text-gray-300 max-h-24 overflow-y-auto whitespace-pre-wrap">
+                {ocrText}
+              </p>
+            </div>
+          )}
+
           {/* Type Selection */}
           <div>
             <label className="text-xs text-gray-500 uppercase mb-2 block">Type</label>
             <div className="flex flex-wrap gap-2">
-              {TYPES.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setType(t.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    type === t.id
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  <t.icon size={16} />
-                  {t.label}
-                </button>
-              ))}
+              {ENTRY_TYPES.map(t => {
+                const Icon = TYPE_ICONS[t.id] || FileText
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setType(t.id as EntryType)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      type === t.id
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    <Icon size={16} />
+                    {t.label}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -479,6 +499,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onPaste={handleUrlPaste}
               placeholder="Enter title or paste URL..."
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
             />
@@ -497,23 +518,25 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
           </div>
 
           {/* Keywords */}
-          {keywords.length > 0 && (
+          {(keywords.length > 0 || (autoTagResult?.keywords && autoTagResult.keywords.length > 0)) && (
             <div>
               <label className="text-xs text-gray-500 uppercase mb-2 block">Keywords</label>
               <div className="flex flex-wrap gap-2">
-                {keywords.map((kw, i) => (
+                {(keywords.length > 0 ? keywords : autoTagResult?.keywords || []).map((kw, i) => (
                   <span
                     key={i}
                     className="px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs flex items-center gap-1"
                   >
                     {kw}
-                    <button
-                      type="button"
-                      onClick={() => setKeywords(keywords.filter((_, j) => j !== i))}
-                      className="hover:text-red-400"
-                    >
-                      <X size={12} />
-                    </button>
+                    {keywords.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setKeywords(keywords.filter((_, j) => j !== i))}
+                        className="hover:text-red-400"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
                   </span>
                 ))}
               </div>
@@ -526,7 +549,10 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
               <label className="text-xs text-gray-500 uppercase mb-2 block">Project</label>
               <select
                 value={project}
-                onChange={(e) => setProject(e.target.value)}
+                onChange={(e) => {
+                  setProject(e.target.value)
+                  setShowAutoTagSuggestion(false)
+                }}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 transition-colors"
               >
                 <option value="">No Project</option>
@@ -563,7 +589,7 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
           {/* Source URL indicator */}
           {sourceUrl && (
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Link2 size={12} />
+              <LinkIcon size={12} />
               <span className="truncate">{sourceUrl}</span>
             </div>
           )}
@@ -579,10 +605,10 @@ export function CaptureModal({ isOpen, onClose, onSubmit, initialFile }: Capture
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isOcrProcessing}
               className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 rounded-lg font-medium transition-all disabled:opacity-50"
             >
-              {isSubmitting ? 'Saving...' : 'Save Entry'}
+              {isSubmitting ? 'Saving...' : isOcrProcessing ? `Processing (${ocrProgress}%)` : 'Save Entry'}
             </button>
           </div>
         </form>

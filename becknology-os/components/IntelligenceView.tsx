@@ -167,7 +167,7 @@ function Section({
   className = ''
 }: {
   title: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: React.ComponentType<{ size?: number | string; className?: string }>
   children: React.ReactNode
   highlight?: boolean
   className?: string

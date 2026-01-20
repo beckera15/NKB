@@ -29,19 +29,21 @@ export function useGoals() {
   }, [])
 
   const createGoal = async (goal: GoalInsert) => {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('goals')
       .insert(goal)
       .select()
       .single()
 
     if (error) throw error
-    setGoals(prev => [data, ...prev])
-    return data
+    setGoals(prev => [data as Goal, ...prev])
+    return data as Goal
   }
 
   const updateGoal = async (id: string, updates: Partial<Goal>) => {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('goals')
       .update(updates)
       .eq('id', id)
@@ -49,8 +51,8 @@ export function useGoals() {
       .single()
 
     if (error) throw error
-    setGoals(prev => prev.map(g => g.id === id ? data : g))
-    return data
+    setGoals(prev => prev.map(g => g.id === id ? data as Goal : g))
+    return data as Goal
   }
 
   const deleteGoal = async (id: string) => {

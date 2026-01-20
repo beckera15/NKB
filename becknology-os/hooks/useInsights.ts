@@ -28,15 +28,16 @@ export function useInsights() {
   }, [])
 
   const createInsight = async (insight: InsightInsert) => {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any)
       .from('insights')
       .insert(insight)
       .select()
       .single()
 
     if (error) throw error
-    setInsights(prev => [data, ...prev])
-    return data
+    setInsights(prev => [data as Insight, ...prev])
+    return data as Insight
   }
 
   useEffect(() => {

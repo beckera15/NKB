@@ -12,6 +12,7 @@ import {
   Plus,
   LogOut
 } from 'lucide-react'
+import { PROJECTS } from '@/lib/constants'
 
 type View = 'intelligence' | 'entries' | 'library' | 'goals'
 
@@ -31,17 +32,6 @@ interface SidebarProps {
   onCapture: () => void
   onLogout: () => void
 }
-
-const PROJECTS = [
-  'TCAS',
-  'Trading',
-  'Becknology',
-  'NKB PR',
-  'Nikki GF Content',
-  'Property/Home',
-  'Family',
-  'Wealth Building',
-]
 
 const NAV_ITEMS = [
   { id: 'intelligence' as View, label: 'Intelligence', icon: Brain },
@@ -162,7 +152,7 @@ function StatCard({
 }: {
   label: string
   value: number
-  icon: React.ComponentType<{ size?: number }>
+  icon: React.ComponentType<{ size?: number | string }>
   color?: 'purple' | 'yellow' | 'blue' | 'red'
 }) {
   const colors = {
