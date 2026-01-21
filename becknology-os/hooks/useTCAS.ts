@@ -46,9 +46,24 @@ export interface AgentTaskInsert {
   due_by?: string | null
 }
 
+export interface TCASStats {
+  pipelineValue: number
+  activeQuotes: number
+  customers: number
+  wonThisMonth: number
+  pipelineByStage: Record<string, number>
+}
+
 export function useTCAS() {
   const [activities, setActivities] = useState<AgentActivity[]>([])
   const [tasks, setTasks] = useState<AgentTask[]>([])
+  const [stats, setStats] = useState<TCASStats>({
+    pipelineValue: 0,
+    activeQuotes: 0,
+    customers: 0,
+    wonThisMonth: 0,
+    pipelineByStage: {},
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -99,6 +114,73 @@ export function useTCAS() {
       const message = err instanceof Error ? err.message : 'Failed to fetch tasks'
       setError(message)
       return []
+    }
+  }, [])
+
+  // Fetch TCAS stats from database
+  const fetchStats = useCallback(async () => {
+    try {
+      // Fetch pipeline data for total value and won this month
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: pipelineData, error: pipelineError } = await (supabase as any)
+        .from('tcas_pipeline')
+        .select('stage, value, updated_at')
+
+      if (pipelineError) throw pipelineError
+
+      // Calculate pipeline value and won this month
+      let pipelineValue = 0
+      let wonThisMonth = 0
+      const pipelineByStage: Record<string, number> = {}
+
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+      if (pipelineData) {
+        for (const item of pipelineData as Array<{ stage?: string; value?: number; updated_at?: string }>) {
+          pipelineValue += item.value || 0
+
+          // Track by stage
+          const stage = item.stage || 'unknown'
+          pipelineByStage[stage] = (pipelineByStage[stage] || 0) + (item.value || 0)
+
+          // Count won this month
+          if (item.stage === 'won' && item.updated_at) {
+            const updatedAt = new Date(item.updated_at)
+            if (updatedAt >= startOfMonth) {
+              wonThisMonth++
+            }
+          }
+        }
+      }
+
+      // Fetch active quotes count
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count: activeQuotes, error: quotesError } = await (supabase as any)
+        .from('tcas_quotes')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['draft', 'sent'])
+
+      if (quotesError) throw quotesError
+
+      // Fetch customers count
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { count: customers, error: customersError } = await (supabase as any)
+        .from('tcas_customers')
+        .select('*', { count: 'exact', head: true })
+
+      if (customersError) throw customersError
+
+      setStats({
+        pipelineValue,
+        activeQuotes: activeQuotes || 0,
+        customers: customers || 0,
+        wonThisMonth,
+        pipelineByStage,
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch stats'
+      setError(message)
     }
   }, [])
 
@@ -306,19 +388,21 @@ export function useTCAS() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchAgentActivity(), fetchAgentTasks()])
+      await Promise.all([fetchAgentActivity(), fetchAgentTasks(), fetchStats()])
       setLoading(false)
     }
     loadData()
-  }, [fetchAgentActivity, fetchAgentTasks])
+  }, [fetchAgentActivity, fetchAgentTasks, fetchStats])
 
   return {
     activities,
     tasks,
+    stats,
     loading,
     error,
     fetchAgentActivity,
     fetchAgentTasks,
+    fetchStats,
     createAgentTask,
     updateTaskStatus,
     logAgentActivity,

@@ -31,19 +31,12 @@ export function TCASCommandView() {
   const {
     activities,
     tasks,
+    stats,
     loading,
     createAgentTask,
     logAgentActivity,
     reviewActivity,
   } = useTCAS()
-
-  // Mock stats
-  const stats = {
-    pipelineValue: 245000,
-    activeQuotes: 12,
-    customers: 89,
-    wonThisMonth: 3,
-  }
 
   const handleSendToAgent = async () => {
     if (!agentInput.trim() || !selectedAgent) return
@@ -257,34 +250,37 @@ export function TCASCommandView() {
               />
               <CardContent>
                 <div className="space-y-2">
-                  {PIPELINE_STAGES.slice(0, 4).map((stage) => (
-                    <div
-                      key={stage.id}
-                      className="flex items-center justify-between p-2 bg-gray-800 rounded-lg"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`w-2 h-2 rounded-full`}
-                          style={{
-                            backgroundColor:
-                              stage.color === 'gray'
-                                ? '#9ca3af'
-                                : stage.color === 'blue'
-                                ? '#60a5fa'
-                                : stage.color === 'purple'
-                                ? '#a78bfa'
-                                : stage.color === 'yellow'
-                                ? '#fbbf24'
-                                : '#4ade80',
-                          }}
-                        />
-                        <span className="text-sm text-gray-300">{stage.name}</span>
+                  {PIPELINE_STAGES.slice(0, 4).map((stage) => {
+                    const stageValue = stats.pipelineByStage[stage.id] || 0
+                    return (
+                      <div
+                        key={stage.id}
+                        className="flex items-center justify-between p-2 bg-gray-800 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-2 h-2 rounded-full`}
+                            style={{
+                              backgroundColor:
+                                stage.color === 'gray'
+                                  ? '#9ca3af'
+                                  : stage.color === 'blue'
+                                  ? '#60a5fa'
+                                  : stage.color === 'purple'
+                                  ? '#a78bfa'
+                                  : stage.color === 'yellow'
+                                  ? '#fbbf24'
+                                  : '#4ade80',
+                            }}
+                          />
+                          <span className="text-sm text-gray-300">{stage.name}</span>
+                        </div>
+                        <span className="text-sm font-medium text-white">
+                          {stageValue > 0 ? `$${(stageValue / 1000).toFixed(0)}K` : '$0'}
+                        </span>
                       </div>
-                      <span className="text-sm font-medium text-white">
-                        ${Math.floor(Math.random() * 80 + 20)}K
-                      </span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>

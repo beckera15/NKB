@@ -1,59 +1,42 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardHeader, CardContent } from '@/components/shared'
 import { Badge } from '@/components/shared/Badge'
 import { Button } from '@/components/shared/Button'
 import {
   Wallet,
   TrendingUp,
-  TrendingDown,
   PiggyBank,
   CreditCard,
   Building,
   DollarSign,
   ArrowUpRight,
-  ArrowDownRight,
   Target,
   Plus,
+  Loader2,
 } from 'lucide-react'
+import { useWealth } from '@/hooks/useWealth'
 
 export function WealthView() {
-  // Mock data - would come from useWealth hook
-  const stats = {
-    netWorth: 485230,
-    totalAssets: 612500,
-    totalDebts: 127270,
-    monthlyIncome: 18500,
-    monthlyExpenses: 8200,
-    savingsRate: 55.7,
+  const {
+    accounts,
+    goals,
+    incomeStreams,
+    stats,
+    loading,
+  } = useWealth()
+
+  // Separate assets from debts
+  const assets = accounts.filter(a => !a.is_debt)
+  const debts = accounts.filter(a => a.is_debt)
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-400" />
+      </div>
+    )
   }
-
-  const accounts = [
-    { name: 'Main Checking', type: 'checking', balance: 15420, institution: 'Chase' },
-    { name: 'High Yield Savings', type: 'savings', balance: 45000, institution: 'Marcus' },
-    { name: 'Trading Account', type: 'investment', balance: 42850, institution: 'TD Ameritrade' },
-    { name: '401(k)', type: 'retirement', balance: 285000, institution: 'Fidelity' },
-    { name: 'Roth IRA', type: 'retirement', balance: 78000, institution: 'Vanguard' },
-    { name: 'Crypto', type: 'crypto', balance: 24500, institution: 'Coinbase' },
-    { name: 'Home Equity', type: 'real_estate', balance: 121730, institution: '' },
-  ]
-
-  const debts = [
-    { name: 'Mortgage', balance: 127270, rate: 3.25, payment: 1850 },
-  ]
-
-  const incomeStreams = [
-    { name: 'TCAS Salary', amount: 12000, type: 'salary' },
-    { name: 'Trading Profits', amount: 4500, type: 'investment' },
-    { name: 'Becknology Consulting', amount: 2000, type: 'business' },
-  ]
-
-  const goals = [
-    { name: '$170K Trading Goal', target: 170000, current: 42850, category: 'investment' },
-    { name: 'Emergency Fund', target: 50000, current: 45000, category: 'savings' },
-    { name: 'Becknology Launch', target: 100000, current: 15000, category: 'investment' },
-  ]
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -118,27 +101,35 @@ export function WealthView() {
                 action={<Button size="sm" variant="ghost" icon={<Plus size={14} />}>Add</Button>}
               />
               <CardContent>
-                <div className="space-y-3">
-                  {accounts.map((account, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${getAccountColor(account.type)}`}>
-                          {getAccountIcon(account.type)}
+                {assets.length > 0 ? (
+                  <div className="space-y-3">
+                    {assets.map((account) => (
+                      <div
+                        key={account.id}
+                        className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${getAccountColor(account.type)}`}>
+                            {getAccountIcon(account.type)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-white">{account.name}</p>
+                            <p className="text-xs text-gray-500">{account.institution || ''}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-white">{account.name}</p>
-                          <p className="text-xs text-gray-500">{account.institution}</p>
-                        </div>
+                        <p className="font-semibold text-white">
+                          ${account.balance.toLocaleString()}
+                        </p>
                       </div>
-                      <p className="font-semibold text-white">
-                        ${account.balance.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Wallet className="w-12 h-12 mx-auto text-gray-600 mb-3" />
+                    <p className="text-gray-400 mb-4">No accounts yet</p>
+                    <Button size="sm" icon={<Plus size={14} />}>Add your first account</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -152,9 +143,9 @@ export function WealthView() {
               <CardContent>
                 {debts.length > 0 ? (
                   <div className="space-y-3">
-                    {debts.map((debt, i) => (
+                    {debts.map((debt) => (
                       <div
-                        key={i}
+                        key={debt.id}
                         className="flex items-center justify-between p-3 bg-gray-800 rounded-lg"
                       >
                         <div className="flex items-center gap-3">
@@ -163,13 +154,11 @@ export function WealthView() {
                           </div>
                           <div>
                             <p className="font-medium text-white">{debt.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {debt.rate}% APR | ${debt.payment}/mo
-                            </p>
+                            <p className="text-xs text-gray-500">{debt.institution || ''}</p>
                           </div>
                         </div>
                         <p className="font-semibold text-red-400">
-                          ${debt.balance.toLocaleString()}
+                          ${Math.abs(debt.balance).toLocaleString()}
                         </p>
                       </div>
                     ))}
@@ -187,26 +176,30 @@ export function WealthView() {
             <Card>
               <CardHeader
                 title="Income Streams"
-                subtitle={`$${stats.monthlyIncome.toLocaleString()}/mo`}
+                subtitle={`$${Math.round(stats.monthlyIncome).toLocaleString()}/mo`}
                 icon={<DollarSign size={20} />}
               />
               <CardContent>
-                <div className="space-y-3">
-                  {incomeStreams.map((stream, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-2 bg-gray-800 rounded-lg"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-white">{stream.name}</p>
-                        <Badge variant="default" size="sm">{stream.type}</Badge>
+                {incomeStreams.length > 0 ? (
+                  <div className="space-y-3">
+                    {incomeStreams.filter(s => s.is_active).map((stream) => (
+                      <div
+                        key={stream.id}
+                        className="flex items-center justify-between p-2 bg-gray-800 rounded-lg"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-white">{stream.name}</p>
+                          <Badge variant="default" size="sm">{stream.type}</Badge>
+                        </div>
+                        <p className="font-semibold text-green-400">
+                          +${stream.amount.toLocaleString()}
+                        </p>
                       </div>
-                      <p className="font-semibold text-green-400">
-                        +${stream.amount.toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4">No income streams tracked</p>
+                )}
               </CardContent>
             </Card>
 
@@ -217,28 +210,34 @@ export function WealthView() {
                 icon={<Target size={20} />}
               />
               <CardContent>
-                <div className="space-y-4">
-                  {goals.map((goal, i) => {
-                    const progress = (goal.current / goal.target) * 100
-                    return (
-                      <div key={i}>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-gray-300">{goal.name}</span>
-                          <span className="text-white">
-                            ${(goal.current / 1000).toFixed(0)}K / ${(goal.target / 1000).toFixed(0)}K
-                          </span>
+                {goals.length > 0 ? (
+                  <div className="space-y-4">
+                    {goals.map((goal) => {
+                      const target = goal.target_amount || 0
+                      const current = goal.current_amount || 0
+                      const progress = target > 0 ? (current / target) * 100 : 0
+                      return (
+                        <div key={goal.id}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-300">{goal.name}</span>
+                            <span className="text-white">
+                              ${(current / 1000).toFixed(0)}K / ${(target / 1000).toFixed(0)}K
+                            </span>
+                          </div>
+                          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                              style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">{progress.toFixed(0)}% complete</p>
                         </div>
-                        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
-                            style={{ width: `${Math.min(progress, 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{progress.toFixed(0)}% complete</p>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-center text-gray-500 py-4">No goals set</p>
+                )}
               </CardContent>
             </Card>
 
